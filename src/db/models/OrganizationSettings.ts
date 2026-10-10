@@ -33,7 +33,6 @@ const OrganizationSettingsSchema = new Schema<IOrganizationSettings>(
         organizationId: {
             type: String,
             required: true,
-            unique: true,
         },
 
         companyName: { type: String, default: "", trim: true },
