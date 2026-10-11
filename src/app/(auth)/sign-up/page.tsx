@@ -15,6 +15,7 @@ import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
 import { IconX } from "@tabler/icons-react";
 import { authClient } from "@/lib/auth-client";
+import { verifyInvitedUserEmail } from "@/actions/public/invitation/verifyInvitedUserEmail";
 import AuthCard from "../_components/AuthCard/AuthCard";
 
 function SignUpForm() {
@@ -51,12 +52,27 @@ function SignUpForm() {
         setIsSubmitting(true);
 
         try {
+            // In the invite flow the callbackURL is /accept-invitation/<invitationId>.
+            // Forward that id to the server so it can skip the redundant
+            // "confirm your email" message — clicking the invitation already proved
+            // ownership of the address (see sendVerificationEmail in src/lib/auth.ts).
+            const invitationId = isInviteFlow
+                ? callbackURL?.split("/").filter(Boolean).pop() ?? null
+                : null;
+
             const { error: signUpError } =
                 await authClient.signUp.email({
                     name: form.values.fullName,
                     email: form.values.email,
                     password: form.values.password,
                     callbackURL: "/verify-email/callback",
+                    ...(invitationId
+                        ? {
+                              fetchOptions: {
+                                  headers: { "x-invitation-id": invitationId },
+                              },
+                          }
+                        : {}),
                 });
 
             if (signUpError) {
@@ -77,8 +93,30 @@ function SignUpForm() {
             }
 
             if (isInviteFlow) {
-                // Invite flow — redirect to accept the invitation
-                window.location.href = callbackURL;
+                // Invite flow: the user has already proven ownership of this address
+                // by opening the invitation link, so mark the e-mail as verified (no
+                // separate verification step is needed) and sign them in before
+                // handing them over to the accept-invitation page.
+                if (invitationId) {
+                    await verifyInvitedUserEmail({
+                        email: form.values.email,
+                        invitationId,
+                    });
+                }
+
+                const { error: signInError } = await authClient.signIn.email({
+                    email: form.values.email,
+                    password: form.values.password,
+                });
+
+                if (signInError) {
+                    // Could not sign in (e.g. the e-mail does not match the
+                    // invitation) — send them to the sign-in page to recover.
+                    window.location.href = `/sign-in?callbackURL=${encodeURIComponent(callbackURL ?? "/")}`;
+                    return;
+                }
+
+                window.location.href = callbackURL ?? "/";
                 return;
             }
 

@@ -163,6 +163,16 @@ export default function AcceptInvitationPage() {
                 name: fullName,
                 email: form.values.email,
                 password: form.values.password,
+                // Flag this sign-up as coming from an invitation link so the server
+                // can skip the redundant "confirm your email" message: clicking the
+                // invitation already proved ownership of this address (the flow
+                // verifies the e-mail itself via verifyInvitedUserEmail). See
+                // sendVerificationEmail in src/lib/auth.ts.
+                fetchOptions: {
+                    headers: {
+                        "x-invitation-id": invitationId,
+                    },
+                },
             });
 
             if (signUpError) {

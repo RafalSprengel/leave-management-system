@@ -47,8 +47,31 @@ function createAuth(db: Db) {
             sendOnSignUp: true,
             sendOnSignIn: false,
             autoSignInAfterVerification: true,
-            sendVerificationEmail: async ({ user, url }) => {
+            sendVerificationEmail: async ({ user, url }, request) => {
                 try {
+                    // Employees who register through an invitation link have already
+                    // proven ownership of their e-mail address: the invitation was
+                    // delivered to it and the accept-invitation flow marks the address
+                    // as verified right after sign-up (see verifyInvitedUserEmail.ts).
+                    // The standalone "confirm your email" message would therefore be
+                    // redundant, so it is skipped when the sign-up request carries the
+                    // invitation id header set by the accept-invitation page — but
+                    // only if a matching pending invitation really exists, so that a
+                    // hand-crafted header cannot silently disable verification.
+                    const invitationId = request?.headers?.get("x-invitation-id");
+                    if (invitationId) {
+                        const pendingInvitation = await db
+                            .collection("invitation")
+                            .findOne({ email: user.email.toLowerCase(), status: "pending" });
+
+                        if (pendingInvitation) {
+                            console.log(
+                                `[auth] Skipping verification email for invited user ${user.email} (invitation=${invitationId})`
+                            );
+                            return;
+                        }
+                    }
+
                     await sendEmail({
                         to: user.email,
                         subject: "Confirm your email - Off Work",
