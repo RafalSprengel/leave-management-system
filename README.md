@@ -1,5 +1,4 @@
 <img width="1442" height="1710" alt="Zrzut ekranu 2026-10-17 232742" src="https://github.com/user-attachments/assets/72a75324-cec4-4df3-b0d7-763a56624c7b" />
-<img width="1596" height="1877" alt="Zrzut ekranu 2026-08-20 222848" src="https://github.com/user-attachments/assets/cc07b5ac-db5d-4779-8f30-228cab54e723" />
 <img width="1327" height="1054" alt="Zrzut ekranu 2026-08-20 190240" src="https://github.com/user-attachments/assets/98550e69-ca49-4c3e-b878-27b8c33c1b11" />
 <img width="1320" height="1053" alt="Zrzut ekranu 2026-08-20 190539" src="https://github.com/user-attachments/assets/1951f905-bf6d-4c1c-a276-3d51bf10ab57" />
 <img width="1319" height="1055" alt="Zrzut ekranu 2026-08-20 190309" src="https://github.com/user-attachments/assets/11bcf93d-5174-489e-bc71-0c48879697ef" />
