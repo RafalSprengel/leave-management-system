@@ -1,38 +1,121 @@
-.hero {
-  padding: 96px 0 80px;
-  text-align: center;
-}
-
-.heroInner {
-  display: flex;
-  justify-content: center;
-}
-
-.heroTitle {
-  font-weight: 800;
-  font-size: clamp(2.25rem, 5vw, 3.5rem);
-  line-height: 1.1;
-  background: linear-gradient(45deg, var(--mantine-color-teal-6), var(--mantine-color-cyan-6));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
 .primaryCta {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background: linear-gradient(135deg, #064e3b 0%, #065f46 100%);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .primaryCta:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(16, 185, 129, 0.35);
+  box-shadow: 0 6px 18px rgba(6, 78, 59, 0.35);
+}
+
+.benefits {
+  padding: 72px 0;
+  border-block: 1px solid rgba(16, 185, 129, 0.18);
+  background:
+    radial-gradient(
+      circle at 12% 18%,
+      rgba(16, 185, 129, 0.18) 0%,
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 88% 82%,
+      rgba(6, 182, 212, 0.12) 0%,
+      transparent 45%
+    ), linear-gradient(180deg, #e9fbf3 0%, #dcf5e8 100%);
+}
+
+.benefitIcon {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--mantine-color-teal-8);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(16, 185, 129, 0.24);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.1);
+}
+
+[data-mantine-color-scheme="dark"] .benefits {
+  border-block-color: rgba(16, 185, 129, 0.24);
+  background:
+    radial-gradient(
+      circle at 12% 18%,
+      rgba(16, 185, 129, 0.22) 0%,
+      transparent 45%
+    ),
+    radial-gradient(
+      circle at 88% 82%,
+      rgba(6, 182, 212, 0.16) 0%,
+      transparent 45%
+    ), linear-gradient(180deg, #0c1d17 0%, #0a1914 100%);
+}
+
+[data-mantine-color-scheme="dark"] .benefitIcon {
+  color: var(--mantine-color-teal-3);
+  background: rgba(16, 185, 129, 0.14);
+  border-color: rgba(16, 185, 129, 0.32);
+  box-shadow: none;
 }
 
 .features {
-  padding: 40px 0 96px;
+  padding: 96px 0;
 }
 
 .bottomCta {
-  padding: 64px 0 96px;
-  border-top: 1px solid light-dark(var(--mantine-color-gray-2), var(--mantine-color-dark-4));
+  padding: 0 0 96px;
+}
+
+.ctaPanel {
+  padding: 64px 24px;
+  border-radius: 24px;
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  background:
+    radial-gradient(
+      circle at 18% 12%,
+      rgba(16, 185, 129, 0.2) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 82% 88%,
+      rgba(6, 182, 212, 0.14) 0%,
+      transparent 50%
+    ), linear-gradient(135deg, #eafbf3 0%, #dcf5e8 100%);
+}
+
+[data-mantine-color-scheme="dark"] .ctaPanel {
+  border-color: rgba(16, 185, 129, 0.28);
+  background:
+    radial-gradient(
+      circle at 18% 12%,
+      rgba(16, 185, 129, 0.24) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at 82% 88%,
+      rgba(6, 182, 212, 0.18) 0%,
+      transparent 50%
+    ), linear-gradient(135deg, #0c1d17 0%, #0a1914 100%);
+}
+
+@media (max-width: 48em) {
+  .benefits {
+    padding: 56px 0;
+  }
+
+  .features {
+    padding: 64px 0;
+  }
+
+  .bottomCta {
+    padding: 0 0 64px;
+  }
+
+  .ctaPanel {
+    padding: 40px 20px;
+    border-radius: 20px;
+  }
 }

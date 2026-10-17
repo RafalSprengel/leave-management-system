@@ -1,6 +1,6 @@
 "use client";
 
-import { Box, Button, Container, Group, Text } from "@mantine/core";
+import { Box, Button, Group, Text } from "@mantine/core";
 import { IconBriefcase } from "@tabler/icons-react";
 import Link from "next/link";
 import styles from "./Header.module.css";
@@ -8,7 +8,7 @@ import styles from "./Header.module.css";
 export default function Header() {
   return (
     <Box component="header" className={styles.header}>
-      <Container size="lg" className={styles.inner}>
+      <Box className={styles.inner}>
         <Group gap={10} align="center">
           <Box className={styles.logoMark}>
             <IconBriefcase size={18} stroke={2.2} />
@@ -22,7 +22,7 @@ export default function Header() {
           <Button
             component={Link}
             href="/sign-in"
-            variant="subtle"
+            variant="default"
             color="gray"
             radius="md"
           >
@@ -38,7 +38,7 @@ export default function Header() {
             Try For Free
           </Button>
         </Group>
-      </Container>
+      </Box>
     </Box>
   );
 }

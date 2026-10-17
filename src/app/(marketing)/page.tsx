@@ -1,21 +1,35 @@
 "use client";
 
-import { Box, Button, Container, Group, SimpleGrid, Stack, Text, Title } from "@mantine/core";
 import {
+  Box,
+  Button,
+  Container,
+  Group,
+  SimpleGrid,
+  Stack,
+  Text,
+  Title,
+} from "@mantine/core";
+import {
+  IconArrowRight,
   IconBellRinging,
+  IconCalendarCheck,
   IconCalendarEvent,
   IconCalendarStats,
   IconChartInfographic,
+  IconClockHour4,
   IconLayoutDashboard,
+  IconMailOff,
   IconReportAnalytics,
   IconShieldLock,
   IconUserCircle,
   IconUsersGroup,
 } from "@tabler/icons-react";
 import Link from "next/link";
-import Footer from "./_components/Footer/Footer";
 import FeatureCard from "./_components/FeatureCard/FeatureCard";
+import Footer from "./_components/Footer/Footer";
 import Header from "./_components/Header/Header";
+import Hero from "./_components/Hero/Hero";
 import styles from "./page.module.css";
 
 const features = [
@@ -75,48 +89,87 @@ const features = [
   },
 ];
 
+const benefits = [
+  {
+    icon: IconClockHour4,
+    title: "Set up in minutes",
+    description:
+      "Create your workspace, invite your team, and start collecting requests the same day.",
+  },
+  {
+    icon: IconMailOff,
+    title: "Zero email chasing",
+    description:
+      "Requests, approvals, and rejections stay in one place, with automatic notifications for every change.",
+  },
+  {
+    icon: IconCalendarCheck,
+    title: "Plan with confidence",
+    description:
+      "Live balances, team availability, and public holidays are always up to date — no spreadsheets needed.",
+  },
+];
+
 export default function Home() {
   return (
     <>
       <Header />
 
-      <Box component="section" className={styles.hero}>
-        <Container size="md" className={styles.heroInner}>
-          <Stack gap="lg" align="center">
-            <Title order={1} ta="center" className={styles.heroTitle}>
-              Leave management that runs itself
-            </Title>
-            <Text
-              size="xl"
-              ta="center"
-              maw={620}
-              c="light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-4))"
+      <Hero />
+
+      <Box component="section" className={styles.benefits}>
+        <Container size="lg">
+          <Stack gap="xl">
+            <Stack gap={6} align="center">
+              <Text
+                fw={700}
+                size="sm"
+                tt="uppercase"
+                style={{ letterSpacing: 1 }}
+                c="light-dark(var(--mantine-color-teal-8), var(--mantine-color-teal-3))"
+              >
+                The Off-Work difference
+              </Text>
+              <Title
+                order={2}
+                ta="center"
+                fz={{ base: "1.6rem", sm: "2.1rem" }}
+              >
+                Less admin. Clearer answers. Happier teams.
+              </Title>
+              <Text
+                size="md"
+                ta="center"
+                maw={540}
+                c="light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-4))"
+              >
+                Everything you need to plan time off without the back-and-forth.
+              </Text>
+            </Stack>
+
+            <SimpleGrid
+              cols={{ base: 1, sm: 3 }}
+              spacing={{ base: "lg", sm: 32 }}
             >
-              Off-Work gives employees an easy way to request leave, track
-              their remaining allowance, and check team absences. Managers get
-              one central place to review requests, manage leave policies, and
-              plan team availability.
-            </Text>
-            <Group gap="md" mt="md">
-              <Button
-                component={Link}
-                href="/sign-up"
-                size="lg"
-                radius="md"
-                className={styles.primaryCta}
-              >
-                Try For Free
-              </Button>
-              <Button
-                component={Link}
-                href="/sign-in"
-                size="lg"
-                radius="md"
-                variant="default"
-              >
-                Login
-              </Button>
-            </Group>
+              {benefits.map((benefit) => (
+                <Group
+                  key={benefit.title}
+                  align="flex-start"
+                  gap="md"
+                  wrap="nowrap"
+                >
+                  <Box className={styles.benefitIcon}>
+                    <benefit.icon size={20} stroke={1.9} />
+                  </Box>
+                  <Stack gap={4}>
+                    <Text fw={600}>{benefit.title}</Text>
+                    <Text size="sm" c="dimmed" lh={1.55}>
+                      {benefit.description}
+                    </Text>
+                  </Stack>
+                </Group>
+              ))}
+            </SimpleGrid>
           </Stack>
         </Container>
       </Box>
@@ -133,7 +186,11 @@ export default function Home() {
             >
               Why Off-Work
             </Text>
-            <Title order={2} ta="center" fz={{ base: "1.75rem", sm: "2.25rem" }}>
+            <Title
+              order={2}
+              ta="center"
+              fz={{ base: "1.75rem", sm: "2.25rem" }}
+            >
               All-in-one Leave &amp; Absence Management for your team
             </Title>
           </Stack>
@@ -152,21 +209,58 @@ export default function Home() {
       </Box>
 
       <Box component="section" className={styles.bottomCta}>
-        <Container size="sm">
-          <Stack align="center" gap="md">
-            <Title order={2} ta="center" fz={{ base: "1.5rem", sm: "2rem" }}>
-              Ready to stop chasing time-off requests over email?
-            </Title>
-            <Button
-              component={Link}
-              href="/sign-up"
-              size="lg"
-              radius="md"
-              className={styles.primaryCta}
-            >
-              Try Off-Work For Free
-            </Button>
-          </Stack>
+        <Container size="lg">
+          <Box className={styles.ctaPanel}>
+            <Stack align="center" gap="md">
+              <Text
+                fw={700}
+                size="sm"
+                tt="uppercase"
+                style={{ letterSpacing: 1 }}
+                c="light-dark(var(--mantine-color-teal-8), var(--mantine-color-teal-3))"
+              >
+                Get started for free
+              </Text>
+              <Title
+                order={2}
+                ta="center"
+                maw={640}
+                fz={{ base: "1.6rem", sm: "2.1rem" }}
+              >
+                Ready to stop chasing time-off requests over email?
+              </Title>
+              <Text
+                size="md"
+                ta="center"
+                maw={560}
+                c="light-dark(var(--mantine-color-gray-7), var(--mantine-color-gray-4))"
+              >
+                Set up your workspace in minutes, invite your team, and let
+                Off-Work handle the rest.
+              </Text>
+              <Group gap="md" mt="sm" justify="center">
+                <Button
+                  component={Link}
+                  href="/sign-up"
+                  size="lg"
+                  radius="md"
+                  rightSection={<IconArrowRight size={18} />}
+                  className={styles.primaryCta}
+                >
+                  Try Off-Work For Free
+                </Button>
+                <Button
+                  component={Link}
+                  href="/sign-in"
+                  size="lg"
+                  radius="md"
+                  variant="default"
+                >
+                  Login
+                </Button>
+              </Group>
+            </Stack>
+          </Box>
         </Container>
       </Box>
 
