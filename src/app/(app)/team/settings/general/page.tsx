@@ -305,7 +305,7 @@ export default function GeneralSettingsPage() {
                             </div>
 
                             <Alert icon={<IconInfoCircle size={14} />} color="gray" variant="light" radius="sm">
-                                Example: UK standard holiday year runs{" "}
+                                Example: a holiday year running{" "}
                                 <Text component="span" fw={500} size="xs">
                                     1 January – 31 December
                                 </Text>

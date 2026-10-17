@@ -69,9 +69,9 @@ const features = [
   },
   {
     icon: IconCalendarStats,
-    title: "UK Bank Holidays & Custom Closures",
+    title: "Public Holidays & Custom Closures",
     description:
-      "Official UK bank holidays are imported automatically, and you can add your own company closure dates on top.",
+      "Import official bank holidays in a single click and add your own company closure dates on top — no manual calendar upkeep.",
   },
 ];
 
@@ -92,9 +92,10 @@ export default function Home() {
               maw={620}
               c="light-dark(var(--mantine-color-gray-6), var(--mantine-color-gray-4))"
             >
-              Off-Work gives UK businesses full visibility into team absences —
-              requests, approvals, and balances handled automatically, without
-              the admin overhead.
+              Off-Work gives employees an easy way to request leave, track
+              their remaining allowance, and check team absences. Managers get
+              one central place to review requests, manage leave policies, and
+              plan team availability.
             </Text>
             <Group gap="md" mt="md">
               <Button
@@ -154,7 +155,7 @@ export default function Home() {
         <Container size="sm">
           <Stack align="center" gap="md">
             <Title order={2} ta="center" fz={{ base: "1.5rem", sm: "2rem" }}>
-              Ready to stop chasing holiday requests over email?
+              Ready to stop chasing time-off requests over email?
             </Title>
             <Button
               component={Link}
