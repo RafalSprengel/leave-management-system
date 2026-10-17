@@ -3,7 +3,7 @@
 <img width="1320" height="1053" alt="Zrzut ekranu 2026-08-20 190539" src="https://github.com/user-attachments/assets/1951f905-bf6d-4c1c-a276-3d51bf10ab57" />
 <img width="1319" height="1055" alt="Zrzut ekranu 2026-08-20 190309" src="https://github.com/user-attachments/assets/11bcf93d-5174-489e-bc71-0c48879697ef" />
 
-### Off Work — Leave Management System (SaaS)
+### Off Work — Leave Management & Absence Tracking (SaaS)
 
 ## 🌐 **Live Demo:** [off-work.rafalsprengel.com](http://off-work.rafalsprengel.com/)
 
