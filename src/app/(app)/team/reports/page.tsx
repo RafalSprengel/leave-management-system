@@ -5,6 +5,7 @@ import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import "@mantine/charts/styles.css";
 import {
+    type MantineColor,
     Center,
     Group,
     Loader,
@@ -15,7 +16,7 @@ import {
     Text,
     Title,
 } from "@mantine/core";
-import { BarChart } from "@mantine/charts";
+import { DonutChart, LineChart } from "@mantine/charts";
 import {
     IconChartBar,
     IconUsers,
@@ -34,6 +35,19 @@ import SortableHeader from "@/app/(app)/components/SortableHeader/SortableHeader
 import { sortItems, type SortDirection } from "@/utils/sort";
 
 dayjs.extend(isoWeek);
+
+const DEPARTMENT_COLORS: MantineColor[] = [
+    "blue.6",
+    "teal.6",
+    "grape.6",
+    "orange.6",
+    "cyan.6",
+    "pink.6",
+    "lime.6",
+    "indigo.6",
+    "yellow.6",
+    "red.6",
+];
 
 function monthKey(d: string) { return dayjs(d).format("YYYY-MM"); }
 function monthLabel(key: string) { return dayjs(key + "-01").format("MMM YY"); }
@@ -207,7 +221,8 @@ export default function ReportsPage() {
     const topWeeks = Array.from(weeklyMap.entries())
         .sort((a, b) => b[1] - a[1])
         .slice(0, 10)
-        .map(([week, days]) => ({ week, days }));
+        .map(([week, days]) => ({ week, days }))
+        .sort((a, b) => a.week.localeCompare(b.week));
 
     // ---- 3. Top sick employees ----
     for (const e of sickEntries) {
@@ -237,6 +252,11 @@ export default function ReportsPage() {
     const deptSickList: DepartmentSick[] = Array.from(sickByDept.entries())
         .map(([department, days]) => ({ department, days }))
         .sort((a, b) => b.days - a.days);
+    const deptSickChartData = deptSickList.map((d, index) => ({
+        name: d.department,
+        value: d.days,
+        color: DEPARTMENT_COLORS[index % DEPARTMENT_COLORS.length],
+    }));
     // ---- 6. Tenure ----
     const now = dayjs();
     const tenureList: EmployeeTenure[] = employees
@@ -286,11 +306,10 @@ export default function ReportsPage() {
                 {monthlyChartData.length === 0 ? (
                     <Text size="sm" c="dimmed">No approved leave data yet.</Text>
                 ) : (
-                    <BarChart
+                    <LineChart
                         h={350}
                         data={monthlyChartData}
                         dataKey="month"
-                        type="stacked"
                         series={[
                             { name: "Sick Leave", color: "red.6" },
                             { name: "Annual Leave", color: "blue.6" },
@@ -316,7 +335,7 @@ export default function ReportsPage() {
                     {topWeeks.length === 0 ? (
                         <Text size="sm" c="dimmed">No sick leave data.</Text>
                     ) : (
-                        <BarChart
+                        <LineChart
                             h={250}
                             data={topWeeks}
                             dataKey="week"
@@ -337,15 +356,16 @@ export default function ReportsPage() {
                     {deptSickList.length === 0 ? (
                         <Text size="sm" c="dimmed">No data.</Text>
                     ) : (
-                        <BarChart
-                            h={250}
-                            data={deptSickList}
-                            dataKey="department"
-                            series={[{ name: "days", color: "red.6" }]}
-                            tickLine="y"
-                            gridAxis="x"
-                            withTooltip
-                        />
+                        <Center>
+                            <DonutChart
+                                size={200}
+                                data={deptSickChartData}
+                                withLabels
+                                withLabelsLine
+                                labelsType="value"
+                                withLegend
+                            />
+                        </Center>
                     )}
                 </Paper>
             </SimpleGrid>
