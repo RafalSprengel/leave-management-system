@@ -57,10 +57,8 @@ const bankHolidayDotStyle: React.CSSProperties = {
   background: "var(--mantine-color-red-6)",
 };
 
-// Dostepne widoki harmonogramu — bez "day"
 type CalendarView = "week" | "month" | "year";
 
-// "John Kowalski" -> "J. Kowalski" (pierwsza litera imienia + kropka + nazwisko)
 const formatShortName = (name?: string): string => {
   if (!name) return "";
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -110,7 +108,6 @@ function getHeaderLabel(date: DateStringValue, view: CalendarView) {
   }
 }
 
-// Wspólny, własny nagłówek harmonogramu: nawigacja + SegmentedControl zamiast Select
 function CalendarHeader({
   date,
   view,
@@ -173,7 +170,6 @@ export default function TeamCalendarPage() {
     dayjs().format("YYYY-MM-DD"),
   );
 
-  // Stan widoku/daty harmonogramu (wspólny dla wersji mobilnej "calendar" i desktopowej)
   const [scheduleView, setScheduleView] = useState<CalendarView>("month");
   const [scheduleDate, setScheduleDate] = useState<DateStringValue>(
     dayjs().format("YYYY-MM-DD") as DateStringValue,
@@ -183,7 +179,6 @@ export default function TeamCalendarPage() {
   const { bankHolidaysMap, closuresMap, loading: loadingClosures } =
     useNonWorkingDays();
 
-  // Dni nierobocze (bank holidays + closures) -> wspolny Set dla helpera dni pracujacych
   const nonWorkingDates = useMemo(() => {
     const set = new Set<string>();
     bankHolidaysMap.forEach((_, date) => {
@@ -207,7 +202,6 @@ export default function TeamCalendarPage() {
 
   const filteredRequests = useMemo(() => {
     return requests.filter((req) => {
-      // Only show approved requests in calendar
       if (req.status !== "approved") return false;
 
       if (
@@ -249,10 +243,6 @@ export default function TeamCalendarPage() {
   const scheduleEvents: ScheduleEventData[] = useMemo(() => {
     const today = dayjs().startOf("day");
 
-    // Sortuj zdarzenia alfabetycznie rosnaco po pracowniku. Kolejnosc zdarzen
-    // w tablicy decyduje o przypisaniu wiersza (position.row) w widoku miesiaca,
-    // a co za tym idzie o tym, ktore pozycje sa widoczne, a ktore ukryte pod
-    // "+N more" w zajetych dniach.
     const sortedRequests = [...filteredRequests].sort((a, b) =>
       formatShortName(a.employeeName).localeCompare(
         formatShortName(b.employeeName),
@@ -272,11 +262,9 @@ export default function TeamCalendarPage() {
         ? `${name} (${days} ${days === 1 ? "day" : "days"}${absenceNote})`
         : name;
 
-      // Past events (ended before today) get grayed out
       const isPast = dayjs(req.endDate).endOf("day").isBefore(today);
       const color = isPast ? "gray.2" : typeColors[req.type] || "gray";
 
-      // Rozbijamy urlop na ciagle bloki dni roboczych (bez weekendow i dni nieroboczych)
       return getWorkingDaySegments(
         req.startDate,
         req.endDate,
@@ -292,16 +280,11 @@ export default function TeamCalendarPage() {
 
     return [...holidayEvents, ...closureEvents, ...leaveEvents];
   }, [filteredRequests, holidayEvents, closureEvents, nonWorkingDates]);
-//===================================================================================
-  // Dynamiczna wysokosc komorek dni: tyle wierszy, ile wynosi najwieksza liczba
-  // zdarzen w pojedynczym dniu wyswietlanego miesiaca (max 6). Dzieki temu
-  // miesiac z rzadszymi dniami nie rezerwuje miejsca na 6 paskow "na zapas".
   const maxEventsPerDay = useMemo(() => {
     const gridStart = dayjs(scheduleDate).startOf("month").startOf("isoWeek");
     const cap = 6;
     let busiest = 0;
 
-    // Siatka miesiaca Mantine: 6 tygodni (consistentWeeks) po 7 dni = 42 dni.
     for (let offset = 0; offset < 42; offset += 1) {
       const day = gridStart.add(offset, "day");
       let count = 0;
@@ -319,13 +302,11 @@ export default function TeamCalendarPage() {
 
     return Math.min(cap, Math.max(1, busiest));
   }, [scheduleEvents, scheduleDate]);
-  //================================================================================
 
   const handleEventClick = (event: ScheduleEventData) => {
     const rawId = String(event.id);
     if (rawId.startsWith("closure-")) return;
     if (rawId.startsWith("holiday-")) return;
-    // id ma format `${requestId}#${segmentIndex}` - bierzemy sam identyfikator wniosku
     const leaveRequestId = rawId.split("#")[0];
     router.push(`/team/leave-requests/${leaveRequestId}`);
   };
@@ -342,7 +323,7 @@ export default function TeamCalendarPage() {
       </Group>
 
       <Paper p="md" radius="md" withBorder bg="var(--mantine-color-body)">
-        <Group gap="md">
+        <Flex gap="md" wrap="nowrap" align="flex-end">
           <Select
             label="Department"
             placeholder="Filter by department"
@@ -350,7 +331,8 @@ export default function TeamCalendarPage() {
             data={departmentsList}
             value={selectedDepartment}
             onChange={setSelectedDepartment}
-            style={{ minWidth: 200 }}
+            flex={{ base: "1 1 0", md: "0 1 220px" }}
+            miw={0}
           />
           <MultiSelect
             label="Leave Types"
@@ -363,9 +345,10 @@ export default function TeamCalendarPage() {
             ]}
             value={selectedTypes}
             onChange={setSelectedTypes}
-            style={{ flexGrow: 1 }}
+            flex={1}
+            miw={0}
           />
-        </Group>
+        </Flex>
       </Paper>
 
       {loading || loadingClosures ? (

@@ -1,21 +1,22 @@
 'use client'
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 
-import { Stack, Group, Title, Badge, Button, Paper, Table, ActionIcon, Card, Text, useMatches, Menu, SegmentedControl, Select } from "@mantine/core";
-import { notifications } from "@mantine/notifications";
+import { ActionIcon, Badge, Button, Card, Group, Menu, Paper, SegmentedControl, Select, Stack, Table, Text, Title, useMatches } from "@mantine/core";
 import { modals } from "@mantine/modals";
-import { IconEdit, IconPlus, IconKey, IconSend, IconDotsVertical, IconCheck, IconClock, IconX, IconUserOff, IconUserCheck, IconSearch } from "@tabler/icons-react";
+import { notifications } from "@mantine/notifications";
+import { IconCheck, IconClock, IconDotsVertical, IconEdit, IconKey, IconPlus, IconSearch, IconSend, IconUserCheck, IconUserOff, IconX } from "@tabler/icons-react";
+import dayjs from "dayjs";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { resendInvitation } from "@/actions/admin/employees/resendInvitation";
+import { sendPasswordReset } from "@/actions/admin/employees/sendPasswordReset";
 import SortableHeader from "@/app/(app)/components/SortableHeader/SortableHeader";
-import { sortItems, type SortDirection } from "@/utils/sort";
-import NewEmployeeModalContent from "./NewEmployeeModalCntent";
-import EditEmployeeModal from "./EditEmployeeModal";
+import type { IEmployee } from "@/types/employees";
+import { type SortDirection, sortItems } from "@/utils/sort";
 import ActivateEmployeeModal from "./ActivateEmployeeModal";
 import DeleteEmployeeModal from "./DeleteEmployeeModal";
-import type { IEmployee } from "@/types/employees";
-import { sendPasswordReset } from "@/actions/admin/employees/sendPasswordReset";
-import { resendInvitation } from "@/actions/admin/employees/resendInvitation";
+import EditEmployeeModal from "./EditEmployeeModal";
+import NewEmployeeModalContent from "./NewEmployeeModalCntent";
 
 function InvitationStatusBadge({ status }: { status: IEmployee["status"] }) {
     if (status === "active") {
@@ -41,7 +42,24 @@ function InvitationStatusBadge({ status }: { status: IEmployee["status"] }) {
     );
 }
 
-type SortColumn = "name" | "email" | "department" | "role" | "status";
+type SortColumn = "name" | "email" | "department" | "role" | "status" | "tenure";
+
+function getTenureDays(employmentDate: string): number {
+    if (!employmentDate) return 0;
+    return Math.max(dayjs().diff(dayjs(employmentDate), "day"), 0);
+}
+
+function formatTenure(days: number): string {
+    const years = Math.floor(days / 365);
+    const months = Math.floor((days % 365) / 30);
+    if (years > 0) return `${years}y ${months}m`;
+    if (months > 0) return `${months}m ${days % 30}d`;
+    return `${days}d`;
+}
+
+function getTenureLabel(employmentDate: string): string {
+    return employmentDate ? formatTenure(getTenureDays(employmentDate)) : "-";
+}
 
 function SortableTh({
     column,
@@ -317,6 +335,8 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                           return empl.role;
                       case "status":
                           return empl.status;
+                      case "tenure":
+                          return getTenureDays(empl.employmentDate);
                   }
               },
               sortDirection,
@@ -406,6 +426,7 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
             <Table.Td>{empl.email}</Table.Td>
             <Table.Td>{typeof empl.department === 'object' ? empl.department?.name ?? "-" : empl.department ?? "-"}</Table.Td>
             <Table.Td>{empl.role}</Table.Td>
+            <Table.Td>{getTenureLabel(empl.employmentDate)}</Table.Td>
             <Table.Td>
                 <InvitationStatusBadge status={empl.status} />
             </Table.Td>
@@ -458,7 +479,17 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                     {empl.role}
                 </Badge>
             </Group>
-        <Group justify="space-between" align="center" mt="xs">
+
+            <Group justify="space-between" align="center" mt="xs">
+                <Text size="xs" c="dimmed">
+                    Tenure
+                </Text>
+                <Text size="sm">
+                    {getTenureLabel(empl.employmentDate)}
+                </Text>
+            </Group>
+
+            <Group justify="space-between" align="center" mt="xs">
                 <Text size="xs" c="dimmed">
                     Invitation
                 </Text>
@@ -532,6 +563,7 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                                 <SortableTh column="email" label="Email" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                                 <SortableTh column="department" label="Department" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                                 <SortableTh column="role" label="Role" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
+                                <SortableTh column="tenure" label="Tenure" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                                 <SortableTh column="status" label="Invitation" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                                 <Table.Th style={{ textAlign: "right" }}>Actions</Table.Th>
                             </Table.Tr>
@@ -541,7 +573,7 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                                 rows
                             ) : (
                                 <Table.Tr>
-                                    <Table.Td colSpan={6}>{filter === "active" ? "No active employees." : "No deactivated employees."}</Table.Td>
+                                    <Table.Td colSpan={7}>{filter === "active" ? "No active employees." : "No deactivated employees."}</Table.Td>
                                 </Table.Tr>
                             )}
                         </Table.Tbody>

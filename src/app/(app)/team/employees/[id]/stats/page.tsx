@@ -27,11 +27,15 @@ export default async function EmployeeStatsPage({
           sickByWeekday: [],
           sickByMonth: [],
           annual: { allowance: 0, used: 0, remaining: 0 },
+          sickThisPeriod: 0,
         };
 
   return (
     <Stack gap="md">
-      <EmployeeStatsCharts {...stats} />
+      <EmployeeStatsCharts
+        {...stats}
+        employmentDate={employee.employmentDate}
+      />
     </Stack>
   );
 }

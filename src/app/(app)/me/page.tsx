@@ -4,6 +4,7 @@ import {
   Badge,
   Box,
   Button,
+  Card,
   Flex,
   Grid,
   Group,
@@ -32,17 +33,17 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { getAbsences } from "@/actions/admin/absences/getAbsences";
+import { getMySickDaysThisYear } from "@/actions/employee/absences/getMySickDaysThisYear";
+import SortableHeader from "@/app/(app)/components/SortableHeader/SortableHeader";
+import { getLeaveTypeLabel, LEAVE_REQUEST_TYPES } from "@/constants/leaveTypes";
 import { useCurrentEmployee } from "@/hooks/useCurrentEmployee";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useMyLeaveRequests } from "@/hooks/useMyLeaveRequests";
 import { useTeamLeaveRequests } from "@/hooks/useTeamLeaveRequests";
-import { sumAnnualDaysUsed } from "@/utils/leaveBalance";
-import { LEAVE_REQUEST_TYPES, getLeaveTypeLabel } from "@/constants/leaveTypes";
-import { getMySickDaysThisYear } from "@/actions/employee/absences/getMySickDaysThisYear";
-import { getAbsences } from "@/actions/admin/absences/getAbsences";
 import type { IAbsenceItem } from "@/types/absence";
-import SortableHeader from "@/app/(app)/components/SortableHeader/SortableHeader";
-import { sortItems, type SortDirection } from "@/utils/sort";
+import { sumAnnualDaysUsed } from "@/utils/leaveBalance";
+import { type SortDirection, sortItems } from "@/utils/sort";
 
 dayjs.extend(relativeTime);
 
@@ -270,76 +271,152 @@ export default function EmployeeDashboard() {
         </Group>
       </Paper>
 
-      <SimpleGrid cols={{ base: 2, md: 3 }} spacing="xs">
-        <Paper p="sm" radius="md" withBorder>
-          <Group justify="space-between" align="center" wrap="nowrap" mb="xs">
-            <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
-              Annual Leave
-            </Text>
-            <ThemeIcon variant="light" color="yellow" size="sm" style={{ flexShrink: 0 }}>
-              <IconPlaneDeparture size={14} />
-            </ThemeIcon>
-          </Group>
-          {hasAnnualData ? (
-            <Stack gap={6}>
-              <Group justify="space-between" wrap="nowrap" gap="xs">
-                <Text size="xs" fw={500}>
-                  {annualDaysUsed} days taken
-                </Text>
+      <SimpleGrid cols={3} spacing={{ base: "xs", sm: "lg" }}>
+        <Card p={{ base: "xs", sm: "lg" }} radius="md" withBorder h="100%">
+          <Flex direction="column" gap="xs" h="100%">
+            <Group
+              justify="space-between"
+              align="flex-start"
+              wrap="nowrap"
+              gap="xs"
+              mih={{ base: 28, sm: 38 }}
+            >
+              <Text
+                fz={{ base: 9, sm: 12 }}
+                c="dimmed"
+                fw={700}
+                tt="uppercase"
+                style={{ letterSpacing: "0.05em", minWidth: 0 }}
+              >
+                Annual Leave
+              </Text>
+              <ThemeIcon
+                variant="light"
+                color="yellow"
+                radius="md"
+                size="md"
+                visibleFrom="sm"
+                style={{ flexShrink: 0 }}
+              >
+                <IconPlaneDeparture size={20} />
+              </ThemeIcon>
+            </Group>
+            <Stack gap={0}>
+              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+                {hasAnnualData ? `${Math.round(usagePercent)}%` : "—"}
+              </Text>
+              {hasAnnualData ? (
+                <>
+                  <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
+                    <Badge variant="light" color="yellow" size="sm">
+                      {annualDaysUsed} of {holidayAllowance} days used
+                    </Badge>
+                    <Text size="xs" c="dimmed">
+                      {remainingDays} days left
+                    </Text>
+                  </Group>
+                  <Progress.Root radius="xl" size={10} mt="md">
+                    <Progress.Section value={usagePercent} color="yellow.6" />
+                    <Progress.Section value={remainingPercent} color="gray.8" />
+                  </Progress.Root>
+                </>
+              ) : (
+                <Group gap="xs" mt="sm" visibleFrom="sm">
+                  <Badge variant="light" color="gray" size="sm">
+                    No allowance data
+                  </Badge>
+                </Group>
+              )}
+            </Stack>
+          </Flex>
+        </Card>
+
+        <Card p={{ base: "xs", sm: "lg" }} radius="md" withBorder h="100%">
+          <Flex direction="column" gap="xs" h="100%">
+            <Group
+              justify="space-between"
+              align="flex-start"
+              wrap="nowrap"
+              gap="xs"
+              mih={{ base: 28, sm: 38 }}
+            >
+              <Text
+                fz={{ base: 9, sm: 12 }}
+                c="dimmed"
+                fw={700}
+                tt="uppercase"
+                style={{ letterSpacing: "0.05em", minWidth: 0 }}
+              >
+                Sick Leave Used
+              </Text>
+              <ThemeIcon
+                variant="light"
+                color="red"
+                radius="md"
+                size="md"
+                visibleFrom="sm"
+                style={{ flexShrink: 0 }}
+              >
+                <IconAlertCircle size={20} />
+              </ThemeIcon>
+            </Group>
+            <Stack gap={0}>
+              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+                {sickDaysThisYear}
+              </Text>
+              <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
+                <Badge variant="light" color="red" size="sm">
+                  days this year
+                </Badge>
+              </Group>
+            </Stack>
+          </Flex>
+        </Card>
+
+        <Card p={{ base: "xs", sm: "lg" }} radius="md" withBorder h="100%">
+          <Flex direction="column" gap="xs" h="100%">
+            <Group
+              justify="space-between"
+              align="flex-start"
+              wrap="nowrap"
+              gap="xs"
+              mih={{ base: 28, sm: 38 }}
+            >
+              <Text
+                fz={{ base: 9, sm: 12 }}
+                c="dimmed"
+                fw={700}
+                tt="uppercase"
+                style={{ letterSpacing: "0.05em", minWidth: 0 }}
+              >
+                Pending Approval
+              </Text>
+              <ThemeIcon
+                variant="light"
+                color="orange"
+                radius="md"
+                size="md"
+                visibleFrom="sm"
+                style={{ flexShrink: 0 }}
+              >
+                <IconClock size={20} />
+              </ThemeIcon>
+            </Group>
+            <Stack gap={0}>
+              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+                {pendingCount}
+              </Text>
+              <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
+                <Badge variant="light" color="orange" size="sm">
+                  {pendingDays} {pendingDays === 1 ? "day" : "days"}
+                </Badge>
                 <Text size="xs" c="dimmed">
-                  {remainingDays} left of {holidayAllowance}
+                  {pendingCount} {pendingCount === 1 ? "request" : "requests"}
                 </Text>
               </Group>
-              <Progress.Root radius="xl" size={16}>
-                <Progress.Section value={usagePercent} color="yellow.6" />
-                <Progress.Section value={remainingPercent} color="gray.8" />
-              </Progress.Root>
             </Stack>
-          ) : (
-            <Text size="xs" c="dimmed">
-              No annual allowance data.
-            </Text>
-          )}
-        </Paper>
-
-        <Paper p="sm" radius="md" withBorder>
-          <Group justify="space-between" align="center" wrap="nowrap" mb={4}>
-            <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
-              Sick Leave Used
-            </Text>
-            <ThemeIcon variant="light" color="red" size="sm" style={{ flexShrink: 0 }}>
-              <IconAlertCircle size={14} />
-            </ThemeIcon>
-          </Group>
-          <Group align="baseline" gap="xs">
-            <Text size="lg" fw={700} lh={1}>
-              {sickDaysThisYear}
-            </Text>
-            <Text size="xs" c="dimmed">
-              days this year
-            </Text>
-          </Group>
-        </Paper>
-
-        <Paper p="sm" radius="md" withBorder>
-          <Group justify="space-between" align="center" wrap="nowrap" mb={4}>
-            <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
-              Pending Approval
-            </Text>
-            <ThemeIcon variant="light" color="orange" size="sm" style={{ flexShrink: 0 }}>
-              <IconClock size={14} />
-            </ThemeIcon>
-          </Group>
-          <Group align="baseline" gap="xs">
-            <Text size="lg" fw={700} lh={1}>
-              {pendingCount}
-            </Text>
-            <Text size="xs" c="dimmed">
-              {pendingCount} {pendingCount === 1 ? "request" : "requests"} ·{" "}
-              {pendingDays} {pendingDays === 1 ? "day" : "days"}
-            </Text>
-          </Group>
-        </Paper>
+          </Flex>
+        </Card>
       </SimpleGrid>
 
       <Grid gap="md">
@@ -371,19 +448,44 @@ export default function EmployeeDashboard() {
                   <Table.Thead>
                     <Table.Tr>
                       <Table.Th>
-                        <SortableHeader label="Type" active={sortColumn === "type"} direction={sortDirection} onSort={() => handleSort("type")} />
+                        <SortableHeader
+                          label="Type"
+                          active={sortColumn === "type"}
+                          direction={sortDirection}
+                          onSort={() => handleSort("type")}
+                        />
                       </Table.Th>
                       <Table.Th>
-                        <SortableHeader label="Dates" active={sortColumn === "dates"} direction={sortDirection} onSort={() => handleSort("dates")} />
+                        <SortableHeader
+                          label="Dates"
+                          active={sortColumn === "dates"}
+                          direction={sortDirection}
+                          onSort={() => handleSort("dates")}
+                        />
                       </Table.Th>
                       <Table.Th>
-                        <SortableHeader label="Days" active={sortColumn === "days"} direction={sortDirection} onSort={() => handleSort("days")} />
+                        <SortableHeader
+                          label="Days"
+                          active={sortColumn === "days"}
+                          direction={sortDirection}
+                          onSort={() => handleSort("days")}
+                        />
                       </Table.Th>
                       <Table.Th>
-                        <SortableHeader label="Status" active={sortColumn === "status"} direction={sortDirection} onSort={() => handleSort("status")} />
+                        <SortableHeader
+                          label="Status"
+                          active={sortColumn === "status"}
+                          direction={sortDirection}
+                          onSort={() => handleSort("status")}
+                        />
                       </Table.Th>
                       <Table.Th>
-                        <SortableHeader label="Submitted" active={sortColumn === "submitted"} direction={sortDirection} onSort={() => handleSort("submitted")} />
+                        <SortableHeader
+                          label="Submitted"
+                          active={sortColumn === "submitted"}
+                          direction={sortDirection}
+                          onSort={() => handleSort("submitted")}
+                        />
                       </Table.Th>
                     </Table.Tr>
                   </Table.Thead>

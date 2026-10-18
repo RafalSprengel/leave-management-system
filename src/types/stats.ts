@@ -24,4 +24,5 @@ export interface EmployeeLeaveStats {
   sickByWeekday: SickWeekdayStat[];
   sickByMonth: SickMonthStat[];
   annual: AnnualLeaveSummary;
+  sickThisPeriod: number;
 }

@@ -1,4 +1,5 @@
 import type { LeaveRequestType } from "@/constants/leaveTypes";
+import type { AbsenceType } from "@/db/models/Absence";
 
 export interface TeamDashboardData {
     totalEmployees: number;
@@ -17,7 +18,8 @@ export interface PendingRequestItem {
     endDate: string;
     /** Dni pracujace wniosku - wartosc pochodna, liczona przy odczycie. */
     daysRequested: number;
-    type: LeaveRequestType;
+    type: LeaveRequestType | AbsenceType;
+    source: "leave" | "absence";
     employeeName?: string;
     employeeEmail?: string;
     departmentName?: string;

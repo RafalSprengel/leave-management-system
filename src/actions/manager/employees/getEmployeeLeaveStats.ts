@@ -2,6 +2,7 @@
 
 import dayjs from "dayjs";
 
+import { getOrgSettings } from "@/actions/admin/settings/getOrgSettings";
 import { getEmployeeLeaveRequests } from "@/actions/manager/leave/getEmployeeLeaveRequests";
 import connectDB from "@/db/connection";
 import Absence from "@/db/models/Absence";
@@ -40,6 +41,30 @@ export async function getEmployeeLeaveStats(
     const periodStartKey = periodStart.format("YYYY-MM-DD");
     const periodEndKey = periodEnd.format("YYYY-MM-DD");
 
+    const settingsResult = await getOrgSettings();
+    const holidayYearStart = settingsResult.success
+      ? settingsResult.data.holidayYearStart
+      : "01-01";
+    const [holidayStartMonth, holidayStartDay] = holidayYearStart
+      .split("-")
+      .map(Number);
+
+    let billingPeriodStart = dayjs()
+      .year(periodEnd.year())
+      .month(holidayStartMonth - 1)
+      .date(holidayStartDay)
+      .startOf("day");
+
+    if (periodEnd.isBefore(billingPeriodStart)) {
+      billingPeriodStart = billingPeriodStart.subtract(1, "year");
+    }
+
+    const billingPeriodStartKey = billingPeriodStart.format("YYYY-MM-DD");
+    const queryStartKey =
+      billingPeriodStartKey < periodStartKey
+        ? billingPeriodStartKey
+        : periodStartKey;
+
     const [
       leaveRequests,
       absences,
@@ -52,13 +77,15 @@ export async function getEmployeeLeaveStats(
         employee: employeeId,
         status: "approved",
         type: "sick",
-        endDate: { $gte: periodStartKey },
+        startDate: { $lte: periodEndKey },
+        endDate: { $gte: queryStartKey },
       }).lean(),
       Absence.find({
         organizationId,
         employee: employeeId,
         type: "sick",
-        endDate: { $gte: periodStartKey },
+        startDate: { $lte: periodEndKey },
+        endDate: { $gte: queryStartKey },
       }).lean(),
       LeaveAllowance.findOne({
         organizationId,
@@ -99,6 +126,18 @@ export async function getEmployeeLeaveStats(
         minStart,
         maxEnd,
       );
+    }
+
+    let sickThisPeriod = 0;
+    for (const item of items) {
+      const from =
+        item.startDate > billingPeriodStartKey
+          ? item.startDate
+          : billingPeriodStartKey;
+      const to = item.endDate < periodEndKey ? item.endDate : periodEndKey;
+      if (from > to) continue;
+
+      sickThisPeriod += getWorkingDays(from, to, nonWorkingDates).length;
     }
 
     const daysByWeekday = new Map<number, number>();
@@ -159,7 +198,10 @@ export async function getEmployeeLeaveStats(
       days: daysByMonth.get(month) ?? 0,
     }));
 
-    return { success: true, data: { sickByWeekday, sickByMonth, annual } };
+    return {
+      success: true,
+      data: { sickByWeekday, sickByMonth, annual, sickThisPeriod },
+    };
   } catch (error: unknown) {
     console.error("Error fetching employee leave stats:", error);
     return {

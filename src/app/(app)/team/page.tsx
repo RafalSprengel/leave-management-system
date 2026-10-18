@@ -62,6 +62,12 @@ const typeLabels: Record<string, string> = Object.fromEntries(
     LEAVE_REQUEST_TYPES.map((t) => [t, getLeaveTypeLabel(t)]),
 )
 
+const absenceTypeLabels: Record<string, string> = {
+    sick: "Sick Leave",
+    unauthorised: "Unauthorised",
+    other: "Other",
+}
+
 function formatDateRange(startDate: string, endDate: string): string {
     const start = dayjs(startDate, "YYYY-MM-DD")
     const end = dayjs(endDate, "YYYY-MM-DD")
@@ -250,82 +256,95 @@ export default function AdminDashboard() {
             </Paper>
 
             <SimpleGrid cols={{ base: 2, md: 4 }} spacing="xs">
-                <Paper p="sm" radius="md" withBorder>
-                    <Group justify="space-between" align="center" wrap="nowrap" mb={4}>
-                        <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
-                            Total Employees
-                        </Text>
-                        <ThemeIcon variant="light" color="blue" size="sm" style={{ flexShrink: 0 }}>
-                            <IconUsers size={14} />
-                        </ThemeIcon>
-                    </Group>
-                    <Group align="baseline" gap="xs">
-                        <Text size="lg" fw={700} lh={1}>
-                            {data.totalEmployees}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                            • {data.departmentOverview.length} depts
-                        </Text>
-                    </Group>
+                <Paper p="sm" radius="md" withBorder h="100%">
+                    <Flex direction="column" gap="xs" h="100%">
+                        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs" mih={38}>
+                            <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
+                                Total Employees
+                            </Text>
+                            <ThemeIcon variant="light" color="blue" size="sm" style={{ flexShrink: 0 }}>
+                                <IconUsers size={14} />
+                            </ThemeIcon>
+                        </Group>
+                        <Group align="baseline" gap="xs">
+                            <Text size="lg" fw={700} lh={1}>
+                                {data.totalEmployees}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                                • {data.departmentOverview.length} depts
+                            </Text>
+                        </Group>
+                    </Flex>
                 </Paper>
 
-                <Paper p="sm" radius="md" withBorder>
-                    <Group justify="space-between" align="center" wrap="nowrap" mb={4}>
-                        <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
-                            Currently On Leave
-                        </Text>
-                        <ThemeIcon variant="light" color="teal" size="sm" style={{ flexShrink: 0 }}>
-                            <IconCalendarStats size={14} />
-                        </ThemeIcon>
-                    </Group>
-                    <Group align="baseline" gap="xs">
-                        <Text size="lg" fw={700} lh={1}>
-                            {data.activeOnLeave}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                            • {data.totalEmployees > 0
-                                ? `${((data.activeOnLeave / data.totalEmployees) * 100).toFixed(1)}%`
-                                : "0%"}
-                        </Text>
-                    </Group>
+                <Paper p="sm" radius="md" withBorder h="100%">
+                    <Flex direction="column" gap="xs" h="100%">
+                        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs" mih={38}>
+                            <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
+                                Currently On Leave Today
+                            </Text>
+                            <ThemeIcon variant="light" color="teal" size="sm" style={{ flexShrink: 0 }}>
+                                <IconCalendarStats size={14} />
+                            </ThemeIcon>
+                        </Group>
+                        <Group align="baseline" gap="xs">
+                            <Text size="lg" fw={700} lh={1}>
+                                {data.activeOnLeave}
+                            </Text>
+                            <Tooltip
+                                label={`${data.activeOnLeave} of ${data.totalEmployees} employees (active and invited; inactive excluded)`}
+                                withArrow
+                            >
+                                <Text size="xs" c="dimmed" style={{ cursor: "help" }}>
+                                    • {data.totalEmployees > 0
+                                        ? `${((data.activeOnLeave / data.totalEmployees) * 100).toFixed(1)}% of ${data.totalEmployees}`
+                                        : "0%"}
+                                </Text>
+                            </Tooltip>
+                        </Group>
+                    </Flex>
                 </Paper>
 
-                <Paper p="sm" radius="md" withBorder>
-                    <Group justify="space-between" align="center" wrap="nowrap" mb={4}>
-                        <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
-                            Pending Requests
-                        </Text>
-                        <ThemeIcon variant="light" color="orange" size="sm" style={{ flexShrink: 0 }}>
-                            <IconClock size={14} />
-                        </ThemeIcon>
-                    </Group>
-                    <Group align="baseline" gap="xs">
-                        <Text size="lg" fw={700} lh={1}>
-                            {data.pendingApprovals}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                            • Action required
-                        </Text>
-                    </Group>
+                <Paper p="sm" radius="md" withBorder h="100%">
+                    <Flex direction="column" gap="xs" h="100%">
+                        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs" mih={38}>
+                            <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
+                                Pending Requests
+                            </Text>
+                            <ThemeIcon variant="light" color="orange" size="sm" style={{ flexShrink: 0 }}>
+                                <IconClock size={14} />
+                            </ThemeIcon>
+                        </Group>
+                        <Group align="baseline" gap="xs">
+                            <Text size="lg" fw={700} lh={1}>
+                                {data.pendingApprovals}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                                • Action required
+                            </Text>
+                        </Group>
+                    </Flex>
                 </Paper>
 
-                <Paper p="sm" radius="md" withBorder>
-                    <Group justify="space-between" align="center" wrap="nowrap" mb={4}>
-                        <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
-                            On Leave This Week
-                        </Text>
-                        <ThemeIcon variant="light" color="red" size="sm" style={{ flexShrink: 0 }}>
-                            <IconCalendarStats size={14} />
-                        </ThemeIcon>
-                    </Group>
-                    <Group align="baseline" gap="xs">
-                        <Text size="lg" fw={700} lh={1}>
-                            {data.onLeaveThisWeek}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                            • Approved
-                        </Text>
-                    </Group>
+                <Paper p="sm" radius="md" withBorder h="100%">
+                    <Flex direction="column" gap="xs" h="100%">
+                        <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs" mih={38}>
+                            <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
+                                On Leave This Week
+                            </Text>
+                            <ThemeIcon variant="light" color="red" size="sm" style={{ flexShrink: 0 }}>
+                                <IconCalendarStats size={14} />
+                            </ThemeIcon>
+                        </Group>
+                        <Group align="baseline" gap="xs">
+                            <Text size="lg" fw={700} lh={1}>
+                                {data.onLeaveThisWeek}
+                            </Text>
+                            <Text size="xs" c="dimmed">
+                                • Approved
+                            </Text>
+                        </Group>
+                    </Flex>
                 </Paper>
             </SimpleGrid>
 
@@ -563,13 +582,19 @@ export default function AdminDashboard() {
                         {validTodayAbsences.map((absence) => {
                             const fullName = absence.employeeName || "Employee has been deleted";
                             const deptName = absence.departmentName || "No Department";
+                            const typeLabel = absence.source === "absence"
+                                ? absenceTypeLabels[absence.type] ?? absence.type
+                                : typeLabels[absence.type] ?? absence.type;
+                            const absenceHref = absence.source === "absence"
+                                ? "/team/absences"
+                                : `/team/leave-requests/${absence._id}`;
 
                             return (
                                 <Paper
-                                    key={absence._id}
+                                    key={`${absence.source}-${absence._id}`}
                                     p="md"
                                     radius="md"
-                                    onClick={() => router.push(`/team/leave-requests/${absence._id}`)}
+                                    onClick={() => router.push(absenceHref)}
                                     onMouseEnter={() => setHoveredAbsenceId(absence._id)}
                                     onMouseLeave={() => setHoveredAbsenceId(null)}
                                     style={{
@@ -596,7 +621,7 @@ export default function AdminDashboard() {
                                                     {fullName}
                                                 </Text>
                                                 <Text size="xs" c="dimmed">
-                                                    {deptName} • {typeLabels[absence.type] ?? absence.type}
+                                                    {deptName} • {typeLabel}
                                                 </Text>
                                             </Box>
                                         </Group>
@@ -606,13 +631,13 @@ export default function AdminDashboard() {
                                                 {dayjs(absence.startDate).format("DD-MM-YYYY")} → {dayjs(absence.endDate).format("DD-MM-YYYY")}
                                             </Text>
                                             <Badge
-                                                color="green"
+                                                color={absence.source === "absence" ? "orange" : "green"}
                                                 variant="outline"
                                                 size="lg"
                                                 radius="xl"
-                                                leftSection={<Box style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--mantine-color-green-6)" }} />}
+                                                leftSection={<Box style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: absence.source === "absence" ? "var(--mantine-color-orange-6)" : "var(--mantine-color-green-6)" }} />}
                                             >
-                                                APPROVED
+                                                {absence.source === "absence" ? "RECORDED" : "APPROVED"}
                                             </Badge>
                                         </Group>
                                     </Group>

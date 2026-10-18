@@ -57,7 +57,7 @@ export default function LayoutClient({
       layout="alt"
       header={{ height: 60 }}
       navbar={{
-        width: 280,
+        width: 230,
         breakpoint: "sm",
         collapsed: { mobile: !opened },
       }}

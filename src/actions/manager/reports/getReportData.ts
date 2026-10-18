@@ -1,20 +1,21 @@
 "use server";
 
 import dayjs from "dayjs";
-import connectDB from "@/db/connection";
-import LeaveRequest from "@/db/models/LeaveRequest";
-import Employee from "@/db/models/Employee";
-import Absence, { type AbsenceType } from "@/db/models/Absence";
-import LeaveAllowance from "@/db/models/LeaveAllowance";
-import { getOrganizationId } from "@/utils/getOrganizationId";
-import { getNonWorkingDays } from "@/utils/nonWorkingDays";
-import { computeLeaveDaysRequested, getWorkingDays } from "@/utils/workingDays";
-import { countAbsenceOverlapDays, type DateRange } from "@/utils/leaveBalance";
 import {
     consumesAllowance,
     type LeaveRequestType,
 } from "@/constants/leaveTypes";
+import connectDB from "@/db/connection";
+import Absence, { type AbsenceType } from "@/db/models/Absence";
+import Department from "@/db/models/Department";
+import Employee from "@/db/models/Employee";
+import LeaveAllowance from "@/db/models/LeaveAllowance";
+import LeaveRequest from "@/db/models/LeaveRequest";
 import type { SickWeekdayStat } from "@/types/stats";
+import { getOrganizationId } from "@/utils/getOrganizationId";
+import { countAbsenceOverlapDays, type DateRange } from "@/utils/leaveBalance";
+import { getNonWorkingDays } from "@/utils/nonWorkingDays";
+import { computeLeaveDaysRequested, getWorkingDays } from "@/utils/workingDays";
 
 export interface ReportDataItem {
     _id: string;
@@ -94,8 +95,11 @@ export async function getReportData(): Promise<{
         const employees = await Employee.find({
             organizationId: orgId,
         })
-            .populate("department", "name")
             .sort({ firstName: 1 })
+            .lean();
+
+        const departments = await Department.find({ organization: orgId })
+            .select("name managers")
             .lean();
 
         const annualAllowances = await LeaveAllowance.find({
@@ -107,10 +111,67 @@ export async function getReportData(): Promise<{
             annualAllowances.map((a) => [String(a.employee), a.days])
         );
 
+        const departmentNamesById = new Map<string, string>();
+        const managedDepartmentsByEmployee = new Map<string, string[]>();
+        for (const department of departments) {
+            departmentNamesById.set(String(department._id), department.name);
+            for (const managerId of department.managers ?? []) {
+                const key = String(managerId);
+                const names = managedDepartmentsByEmployee.get(key) ?? [];
+                names.push(department.name);
+                managedDepartmentsByEmployee.set(key, names);
+            }
+        }
+
+        const employeeById = new Map(
+            employees.map((employee) => [String(employee._id), employee])
+        );
+        const activeEmployeeIds = new Set(
+            employees
+                .filter((employee) => employee.status !== "inactive")
+                .map((employee) => String(employee._id))
+        );
+
+        const getEmployeeDepartmentName = (employeeId: unknown) => {
+            if (!employeeId) return undefined;
+            const employee = employeeById.get(String(employeeId));
+            if (!employee) return undefined;
+
+            const ownDepartmentId = employee.department
+                ? String(employee.department)
+                : "";
+            const ownDepartmentName = ownDepartmentId
+                ? departmentNamesById.get(ownDepartmentId)
+                : undefined;
+            if (ownDepartmentName) return ownDepartmentName;
+
+            const managed = managedDepartmentsByEmployee.get(String(employee._id));
+            return managed && managed.length > 0
+                ? [...managed].sort((a, b) => a.localeCompare(b)).join(", ")
+                : undefined;
+        };
+
+        const getEmployeeName = (employeeId: unknown, fallback?: string) => {
+            if (!employeeId) return fallback;
+            const employee = employeeById.get(String(employeeId));
+            return employee
+                ? `${employee.firstName} ${employee.lastName}`
+                : fallback;
+        };
+
+        const activeLeaveRequests = leaveRequests.filter(
+            (request) =>
+                request.employee && activeEmployeeIds.has(String(request.employee))
+        );
+        const activeAbsences = absences.filter(
+            (absence) =>
+                absence.employee && activeEmployeeIds.has(String(absence.employee))
+        );
+
         // daysRequested jest wartoscia pochodna - liczymy z aktualnych dni nieroboczych.
         // Zakres obejmuje zarowno wnioski urlopowe, jak i nieobecnosci (absences),
         // bo oba zrodla sa prezentowane w raportach.
-        const rangeItems = [...leaveRequests, ...absences];
+        const rangeItems = [...activeLeaveRequests, ...activeAbsences];
         const nonWorkingDates =
             rangeItems.length > 0
                 ? await getNonWorkingDays(
@@ -127,14 +188,14 @@ export async function getReportData(): Promise<{
                 : new Set<string>();
 
         const absencesByEmployee = new Map<string, DateRange[]>();
-        for (const a of absences) {
+        for (const a of activeAbsences) {
             const key = String(a.employee);
             const list = absencesByEmployee.get(key) ?? [];
             list.push({ startDate: a.startDate, endDate: a.endDate });
             absencesByEmployee.set(key, list);
         }
 
-        const mappedRequests: ReportDataItem[] = leaveRequests.map((lr) => {
+        const mappedRequests: ReportDataItem[] = activeLeaveRequests.map((lr) => {
             const daysRequested = computeLeaveDaysRequested(
                 lr.startDate,
                 lr.endDate,
@@ -159,14 +220,15 @@ export async function getReportData(): Promise<{
                 chargedDays: Math.max(daysRequested - absenceDays, 0),
                 status: lr.status,
                 type: lr.type,
-                employeeName: lr.employeeName,
+                employeeName: getEmployeeName(lr.employee, lr.employeeName),
                 employeeEmail: lr.employeeEmail,
-                departmentName: lr.departmentName,
+                departmentName:
+                    getEmployeeDepartmentName(lr.employee) ?? lr.departmentName,
                 createdAt: lr.createdAt ? lr.createdAt.toISOString() : "",
             };
         });
 
-        const mappedAbsences: AbsenceReportItem[] = absences.map((a) => ({
+        const mappedAbsences: AbsenceReportItem[] = activeAbsences.map((a) => ({
             _id: String(a._id),
             employee: a.employee ? String(a.employee) : undefined,
             startDate: a.startDate,
@@ -180,8 +242,9 @@ export async function getReportData(): Promise<{
             ),
             // Starsze/niekompletne wpisy moga nie miec typu - traktujemy je jako "other".
             type: a.type ?? "other",
-            employeeName: a.employeeName,
-            departmentName: a.departmentName,
+            employeeName: getEmployeeName(a.employee, a.employeeName),
+            departmentName:
+                getEmployeeDepartmentName(a.employee) ?? a.departmentName,
             createdAt: a.createdAt ? a.createdAt.toISOString() : "",
         }));
 
@@ -204,10 +267,10 @@ export async function getReportData(): Promise<{
             }
         };
 
-        for (const lr of leaveRequests) {
+        for (const lr of activeLeaveRequests) {
             if (lr.type === "sick") addSickWorkingDates(lr.startDate, lr.endDate);
         }
-        for (const a of absences) {
+        for (const a of activeAbsences) {
             if ((a.type ?? "other") === "sick") addSickWorkingDates(a.startDate, a.endDate);
         }
 
@@ -234,15 +297,12 @@ export async function getReportData(): Promise<{
         });
 
         const mappedEmployees: EmployeeReportItem[] = employees.map((emp) => {
-            const dept = emp.department as unknown as
-                | { _id: string; name: string }
-                | undefined;
             return {
                 _id: String(emp._id),
                 firstName: emp.firstName,
                 lastName: emp.lastName,
                 email: emp.email,
-                departmentName: dept?.name,
+                departmentName: getEmployeeDepartmentName(emp._id),
                 employmentDate: emp.employmentDate
                     ? new Date(emp.employmentDate).toISOString()
                     : "",

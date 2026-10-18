@@ -269,6 +269,7 @@ export default function TeamLeaveRequestsPage() {
               <SegmentedControl
                 value={statusFilter}
                 onChange={setStatusFilter}
+                size="xs"
                 data={[
                   { label: `Pending (${pendingCount})`, value: "Pending" },
                   { label: `Approved (${approvedCount})`, value: "Approved" },
@@ -356,30 +357,30 @@ export default function TeamLeaveRequestsPage() {
                               color="initials"
                             />
                             <Box>
-                              <Text size="sm" fw={500}>
+                              <Text size="xs" fw={500}>
                                 {req.employeeName}
                               </Text>
-                              <Text size="xs" c="dimmed">
+                              <Text fz="11px" c="dimmed">
                                 {req.departmentName ?? "No Department"}
                               </Text>
                             </Box>
                           </Group>
                         </Table.Td>
                         <Table.Td>
-                          <Badge variant="light" color="blue" size="sm">
+                          <Badge variant="light" color="blue" size="xs">
                             {typeLabels[req.type] ?? req.type}
                           </Badge>
                         </Table.Td>
                         <Table.Td>
-                          <Text size="sm">
+                          <Text size="xs">
                             {formatDateRange(req.startDate, req.endDate)}
                           </Text>
-                          <Text size="xs" c="dimmed">
+                          <Text fz="11px" c="dimmed">
                             Submitted {dayjs(req.createdAt).fromNow()}
                           </Text>
                         </Table.Td>
                         <Table.Td>
-                          <Text size="sm" fw={500}>
+                          <Text size="xs" fw={500}>
                             {formatRequestDays(req, "d")}
                           </Text>
                         </Table.Td>
@@ -393,7 +394,7 @@ export default function TeamLeaveRequestsPage() {
                                   ? "red"
                                   : "yellow"
                             }
-                            size="sm"
+                            size="xs"
                           >
                             {req.status.charAt(0).toUpperCase() +
                               req.status.slice(1)}

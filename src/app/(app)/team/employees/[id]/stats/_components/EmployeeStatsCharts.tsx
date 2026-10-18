@@ -1,21 +1,49 @@
 "use client";
 
-import { Group, Progress, SimpleGrid, Stack, Text, Title } from "@mantine/core";
+import {
+  Badge,
+  Card,
+  Flex,
+  Group,
+  Progress,
+  SimpleGrid,
+  Stack,
+  Text,
+  ThemeIcon,
+  Title,
+} from "@mantine/core";
 import "@mantine/charts/styles.css";
 import { LineChart } from "@mantine/charts";
 import {
   IconBeach,
   IconCalendarStats,
+  IconHourglass,
   IconStethoscope,
 } from "@tabler/icons-react";
+import dayjs from "dayjs";
 
 import type { EmployeeLeaveStats } from "@/types/stats";
+
+function getTenureDays(employmentDate: string): number {
+  if (!employmentDate) return 0;
+  return Math.max(dayjs().diff(dayjs(employmentDate), "day"), 0);
+}
+
+function formatTenure(days: number): string {
+  const years = Math.floor(days / 365);
+  const months = Math.floor((days % 365) / 30);
+  if (years > 0) return `${years}y ${months}m`;
+  if (months > 0) return `${months}m ${days % 30}d`;
+  return `${days}d`;
+}
 
 export function EmployeeStatsCharts({
   sickByWeekday,
   sickByMonth,
   annual,
-}: EmployeeLeaveStats) {
+  sickThisPeriod,
+  employmentDate,
+}: EmployeeLeaveStats & { employmentDate: string }) {
   const hasWeekdayData = sickByWeekday.some((item) => item.days > 0);
   const hasMonthData = sickByMonth.some((item) => item.days > 0);
   const hasAnnualData = annual.allowance > 0 || annual.used > 0;
@@ -27,32 +55,153 @@ export function EmployeeStatsCharts({
 
   return (
     <Stack gap="xl">
-      <Stack gap="sm" maw={480} w="100%" mx="auto">
-        <Group gap="xs" justify="center">
-          <IconBeach size={20} />
-          <Title order={4}>Annual Holiday</Title>
-        </Group>
-        {hasAnnualData ? (
-          <Stack gap={6}>
-            <Group justify="space-between">
-              <Text size="sm" fw={500}>
-                {annual.used} days taken
+      <SimpleGrid cols={3} spacing={{ base: "xs", sm: "lg" }}>
+        <Card p={{ base: "xs", sm: "lg" }} radius="md" withBorder h="100%">
+          <Flex direction="column" gap="xs" h="100%">
+            <Group
+              justify="space-between"
+              align="flex-start"
+              wrap="nowrap"
+              gap="xs"
+              mih={{ base: 28, sm: 38 }}
+            >
+              <Text
+                fz={{ base: 9, sm: 12 }}
+                c="dimmed"
+                fw={700}
+                tt="uppercase"
+                style={{ letterSpacing: "0.05em", minWidth: 0 }}
+              >
+                Annual Holiday
               </Text>
-              <Text size="sm" c="dimmed">
-                {annual.remaining} left of {annual.allowance}
-              </Text>
+              <ThemeIcon
+                variant="light"
+                color="yellow"
+                radius="md"
+                size="md"
+                visibleFrom="sm"
+                style={{ flexShrink: 0 }}
+              >
+                <IconBeach size={20} />
+              </ThemeIcon>
             </Group>
-            <Progress.Root radius="xl" size={16}>
-              <Progress.Section value={usedPercent} color="yellow.6" />
-              <Progress.Section value={remainingPercent} color="gray.8" />
-            </Progress.Root>
-          </Stack>
-        ) : (
-          <Text size="sm" c="dimmed" ta="center">
-            No annual allowance data.
-          </Text>
-        )}
-      </Stack>
+            <Stack gap={0}>
+              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+                {hasAnnualData ? `${Math.round(usedPercent)}%` : "—"}
+              </Text>
+              <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
+                <Badge variant="light" color="yellow" size="sm">
+                  {hasAnnualData
+                    ? `${annual.used} of ${annualTotal} days used`
+                    : "No allowance data"}
+                </Badge>
+                {hasAnnualData && (
+                  <Text size="xs" c="dimmed">
+                    {annual.remaining} days left
+                  </Text>
+                )}
+              </Group>
+              {hasAnnualData && (
+                <Progress.Root radius="xl" size={10} mt="md">
+                  <Progress.Section value={usedPercent} color="yellow.6" />
+                  <Progress.Section value={remainingPercent} color="gray.8" />
+                </Progress.Root>
+              )}
+            </Stack>
+          </Flex>
+        </Card>
+
+        <Card p={{ base: "xs", sm: "lg" }} radius="md" withBorder h="100%">
+          <Flex direction="column" gap="xs" h="100%">
+            <Group
+              justify="space-between"
+              align="flex-start"
+              wrap="nowrap"
+              gap="xs"
+              mih={{ base: 28, sm: 38 }}
+            >
+              <Text
+                fz={{ base: 9, sm: 12 }}
+                c="dimmed"
+                fw={700}
+                tt="uppercase"
+                style={{ letterSpacing: "0.05em", minWidth: 0 }}
+              >
+                Sick this Year
+              </Text>
+              <ThemeIcon
+                variant="light"
+                color="red"
+                radius="md"
+                size="md"
+                visibleFrom="sm"
+                style={{ flexShrink: 0 }}
+              >
+                <IconStethoscope size={20} />
+              </ThemeIcon>
+            </Group>
+            <Stack gap={0}>
+              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+                {sickThisPeriod}
+              </Text>
+              <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
+                <Badge variant="light" color="red" size="sm">
+                  days
+                </Badge>
+                <Text size="xs" c="dimmed">
+                  current holiday year
+                </Text>
+              </Group>
+            </Stack>
+          </Flex>
+        </Card>
+
+        <Card p={{ base: "xs", sm: "lg" }} radius="md" withBorder h="100%">
+          <Flex direction="column" gap="xs" h="100%">
+            <Group
+              justify="space-between"
+              align="flex-start"
+              wrap="nowrap"
+              gap="xs"
+              mih={{ base: 28, sm: 38 }}
+            >
+              <Text
+                fz={{ base: 9, sm: 12 }}
+                c="dimmed"
+                fw={700}
+                tt="uppercase"
+                style={{ letterSpacing: "0.05em", minWidth: 0 }}
+              >
+                Tenure
+              </Text>
+              <ThemeIcon
+                variant="light"
+                color="blue"
+                radius="md"
+                size="md"
+                visibleFrom="sm"
+                style={{ flexShrink: 0 }}
+              >
+                <IconHourglass size={20} />
+              </ThemeIcon>
+            </Group>
+            <Stack gap={0}>
+              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+                {employmentDate
+                  ? formatTenure(getTenureDays(employmentDate))
+                  : "-"}
+              </Text>
+              <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
+                <Badge variant="light" color="blue" size="sm">
+                  {employmentDate
+                    ? `Since ${dayjs(employmentDate).format("DD.MM.YYYY")}`
+                    : "No employment date"}
+                </Badge>
+              </Group>
+            </Stack>
+          </Flex>
+        </Card>
+      </SimpleGrid>
 
       <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
         <Stack gap="xs">
