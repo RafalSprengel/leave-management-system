@@ -4,6 +4,7 @@ import { Paper, Tabs } from "@mantine/core";
 import {
   IconCalendarEvent,
   IconCalendarStats,
+  IconChartLine,
   IconCoins,
   IconUser,
 } from "@tabler/icons-react";
@@ -14,6 +15,7 @@ const tabs = [
   { value: "leaves", label: "Leaves", icon: IconCalendarEvent },
   { value: "calendar", label: "Calendar", icon: IconCalendarStats },
   { value: "allowances", label: "Allowances", icon: IconCoins },
+  { value: "stats", label: "Stats", icon: IconChartLine },
 ];
 
 export default function EmployeeDetailTabs({

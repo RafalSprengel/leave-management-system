@@ -225,12 +225,14 @@ export default function EmployeeDashboard() {
   // Only approved annual leave counts as used allowance; days covered by an
   // absence (sick etc.) are not deducted.
   const annualDaysUsed = sumAnnualDaysUsed(requests);
-  // Can go negative when the employee takes more days than their allowance.
   const daysLeft = holidayAllowance - annualDaysUsed;
   const usagePercent =
     holidayAllowance > 0
       ? Math.min((annualDaysUsed / holidayAllowance) * 100, 100)
       : 0;
+  const remainingPercent = Math.max(100 - usagePercent, 0);
+  const remainingDays = Math.max(daysLeft, 0);
+  const hasAnnualData = holidayAllowance > 0 || annualDaysUsed > 0;
 
   // Stats for leave requests still awaiting approval.
   const pendingRequests = requests.filter((req) => req.status === "pending");
@@ -270,47 +272,34 @@ export default function EmployeeDashboard() {
 
       <SimpleGrid cols={{ base: 2, md: 3 }} spacing="xs">
         <Paper p="sm" radius="md" withBorder>
-          <Group justify="space-between" align="center" wrap="nowrap" mb={4}>
+          <Group justify="space-between" align="center" wrap="nowrap" mb="xs">
             <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
               Annual Leave
             </Text>
-            <ThemeIcon variant="light" color="blue" size="sm" style={{ flexShrink: 0 }}>
+            <ThemeIcon variant="light" color="yellow" size="sm" style={{ flexShrink: 0 }}>
               <IconPlaneDeparture size={14} />
             </ThemeIcon>
           </Group>
-          <Group align="baseline" gap="xs">
-            <Text size="xl" fw={700} lh={1}>
-              {daysLeft}
+          {hasAnnualData ? (
+            <Stack gap={6}>
+              <Group justify="space-between" wrap="nowrap" gap="xs">
+                <Text size="xs" fw={500}>
+                  {annualDaysUsed} days taken
+                </Text>
+                <Text size="xs" c="dimmed">
+                  {remainingDays} left of {holidayAllowance}
+                </Text>
+              </Group>
+              <Progress.Root radius="xl" size={16}>
+                <Progress.Section value={usagePercent} color="yellow.6" />
+                <Progress.Section value={remainingPercent} color="gray.8" />
+              </Progress.Root>
+            </Stack>
+          ) : (
+            <Text size="xs" c="dimmed">
+              No annual allowance data.
             </Text>
-            <Text size="sm" c="dimmed">
-              days left
-            </Text>
-          </Group>
-          <Text size="xs" c="dimmed" mt={4}>
-            {annualDaysUsed} used of {holidayAllowance} days
-          </Text>
-          <Box pos="relative" mt="xs">
-            <Progress.Root size="xl" radius="xl">
-              <Progress.Section value={usagePercent} color="orange" animated />
-              <Progress.Section
-                value={Math.max(100 - usagePercent, 0)}
-                color="gray"
-              />
-            </Progress.Root>
-            <Text
-              size="xs"
-              fw={600}
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                pointerEvents: "none",
-              }}
-            >
-              {Math.round(usagePercent)}%
-            </Text>
-          </Box>
+          )}
         </Paper>
 
         <Paper p="sm" radius="md" withBorder>
