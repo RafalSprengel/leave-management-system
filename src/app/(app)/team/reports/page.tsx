@@ -428,6 +428,7 @@ export default function ReportsPage() {
                                         thickness={24}
                                         chartLabel={`${annualTakenPercent}%`}
                                         withTooltip={false}
+                                        styles={{ label: { fontSize: "1.75rem" } }}
                                     />
                                 </Center>
                                 <Stack mt={-80} gap="xs">
