@@ -3,12 +3,11 @@
 import dayjs from "dayjs";
 import dayOfYear from "dayjs/plugin/dayOfYear";
 import isoWeek from "dayjs/plugin/isoWeek";
-import mongoose from "mongoose";
 import connectDB from "@/db/connection";
 import Absence, { type AbsenceType } from "@/db/models/Absence";
 import Employee from "@/db/models/Employee";
 import LeaveRequest from "@/db/models/LeaveRequest";
-import type { DepartmentOverviewItem, PendingRequestItem, TeamDashboardData } from "@/types/dashboard";
+import type { PendingRequestItem, TeamDashboardData } from "@/types/dashboard";
 import { getOrganizationId } from "@/utils/getOrganizationId";
 import { getNonWorkingDays } from "@/utils/nonWorkingDays";
 import { computeLeaveDaysRequested } from "@/utils/workingDays";
@@ -24,11 +23,6 @@ export async function getTeamDashboard() {
         if (!orgId) {
             return { success: false, error: "Organization ID is missing" };
         }
-
-        const orgObjectId =
-            typeof orgId === "string" && mongoose.Types.ObjectId.isValid(orgId)
-                ? new mongoose.Types.ObjectId(orgId)
-                : orgId;
 
         const today = dayjs();
         const todayStr = today.format("YYYY-MM-DD");
@@ -47,9 +41,6 @@ export async function getTeamDashboard() {
             todayAbsenceRecordsRaw,
             upcomingAbsencesRaw,
             pendingRequestsRaw,
-
-            deptEmployeeCounts,
-
             weeklyOnLeaveRaw,
         ] = await Promise.all([
             Employee.countDocuments({
@@ -103,43 +94,7 @@ export async function getTeamDashboard() {
                 .limit(4)
                 .lean(),
 
-            Employee.aggregate<{ _id: unknown; name: string; count: number }>(
-                [
-                    {
-                        $match: {
-                            $or: [
-                                { organizationId: orgId },
-                                { organizationId: orgObjectId },
-                            ],
-                            status: { $in: ["active", "invited"] },
-                        },
-                    },
-                    {
-                        $lookup: {
-                            from: "departments",
-                            localField: "department",
-                            foreignField: "_id",
-                            as: "dept",
-                        },
-                    },
-                    { $unwind: "$dept" },
-                    {
-                        $group: {
-                            _id: "$dept._id",
-                            name: { $first: "$dept.name" },
-                            count: { $sum: 1 },
-                        },
-                    },
-                    { $sort: { count: -1 } },
-                ],
-            ),
-
-            LeaveRequest.aggregate<{
-                _id: {
-                    employee: unknown;
-                    department: unknown;
-                };
-            }>([
+            LeaveRequest.aggregate<{ _id: unknown }>([
                 {
                     $match: {
                         organizationId: orgId,
@@ -166,7 +121,6 @@ export async function getTeamDashboard() {
                     $project: {
                         _id: 0,
                         employee: "$emp._id",
-                        department: "$emp.department",
                     },
                 },
                 {
@@ -198,7 +152,6 @@ export async function getTeamDashboard() {
                                 $project: {
                                     _id: 0,
                                     employee: "$emp._id",
-                                    department: "$emp.department",
                                 },
                             },
                         ],
@@ -206,10 +159,7 @@ export async function getTeamDashboard() {
                 },
                 {
                     $group: {
-                        _id: {
-                            employee: "$employee",
-                            department: "$department",
-                        },
+                        _id: "$employee",
                     },
                 },
             ]),
@@ -252,12 +202,14 @@ export async function getTeamDashboard() {
         }
 
         const toPendingItem = (doc: {
+            employee?: unknown;
             startDate: string;
             endDate: string;
             startHalfDay?: boolean;
             endHalfDay?: boolean;
         }): PendingRequestItem => {
             const item = JSON.parse(JSON.stringify(doc)) as PendingRequestItem;
+            item.employee = doc.employee ? String(doc.employee) : undefined;
             item.daysRequested = computeLeaveDaysRequested(
                 doc.startDate,
                 doc.endDate,
@@ -271,6 +223,7 @@ export async function getTeamDashboard() {
 
         const toAbsenceItem = (doc: {
             _id: unknown;
+            employee?: unknown;
             startDate: string;
             endDate: string;
             type?: AbsenceType | null;
@@ -280,6 +233,7 @@ export async function getTeamDashboard() {
             createdAt: Date;
         }): PendingRequestItem => ({
             _id: String(doc._id),
+            employee: doc.employee ? String(doc.employee) : undefined,
             startDate: doc.startDate,
             endDate: doc.endDate,
             daysRequested: computeLeaveDaysRequested(
@@ -308,26 +262,9 @@ export async function getTeamDashboard() {
         const upcomingAbsences = activeUpcomingAbsencesRaw.map(toPendingItem);
         const pendingRequests = pendingRequestsRaw.map(toPendingItem);
 
-        const onLeaveMap = new Map<string, number>();
-        const onLeaveEmployeeIds = new Set<string>();
-        for (const row of weeklyOnLeaveRaw) {
-            onLeaveEmployeeIds.add(String(row._id.employee));
-            if (row._id.department) {
-                const departmentId = String(row._id.department);
-                onLeaveMap.set(
-                    departmentId,
-                    (onLeaveMap.get(departmentId) ?? 0) + 1
-                );
-            }
-        }
-        const onLeaveThisWeek = onLeaveEmployeeIds.size;
-
-        const departmentOverview: DepartmentOverviewItem[] =
-            deptEmployeeCounts.map((d) => ({
-                name: d.name,
-                count: d.count,
-                onLeave: onLeaveMap.get(String(d._id)) ?? 0,
-            }));
+        const onLeaveThisWeek = new Set(
+            weeklyOnLeaveRaw.map((row) => String(row._id))
+        ).size;
 
         return {
             success: true,
@@ -339,7 +276,6 @@ export async function getTeamDashboard() {
                 todayAbsences,
                 upcomingAbsences,
                 pendingRequests,
-                departmentOverview,
             } as TeamDashboardData,
         };
     } catch (error: unknown) {

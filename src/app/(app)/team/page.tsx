@@ -32,7 +32,6 @@ import {
     IconUserPlus,
     IconSettings,
     IconChevronRight,
-    IconAdjustments,
     IconCalendar,
     IconCalendarPlus,
 } from "@tabler/icons-react"
@@ -51,12 +50,8 @@ import {
     rejectLeaveRequestAsAdmin,
 } from "@/actions/admin/leave/reviewLeaveRequest";
 import type { PendingRequestItem } from "@/types/dashboard";
-import SortableHeader from "@/app/(app)/components/SortableHeader/SortableHeader";
-import { sortItems, type SortDirection } from "@/utils/sort";
 
 dayjs.extend(relativeTime)
-
-type DepartmentSortColumn = "name" | "count" | "onLeave";
 
 const typeLabels: Record<string, string> = Object.fromEntries(
     LEAVE_REQUEST_TYPES.map((t) => [t, getLeaveTypeLabel(t)]),
@@ -66,6 +61,12 @@ const absenceTypeLabels: Record<string, string> = {
     sick: "Sick Leave",
     unauthorised: "Unauthorised",
     other: "Other",
+}
+
+const absenceTypeColors: Record<string, string> = {
+    sick: "orange",
+    unauthorised: "red",
+    other: "gray",
 }
 
 function formatDateRange(startDate: string, endDate: string): string {
@@ -79,17 +80,6 @@ export default function AdminDashboard() {
     const { data, loading, refetch } = useTeamDashboard()
     const [hoveredAbsenceId, setHoveredAbsenceId] = useState<string | null>(null);
     const rejectReasonRef = useRef("");
-    const [deptSortColumn, setDeptSortColumn] = useState<DepartmentSortColumn | null>(null);
-    const [deptSortDirection, setDeptSortDirection] = useState<SortDirection>("asc");
-
-    const handleDeptSort = (column: DepartmentSortColumn) => {
-        if (deptSortColumn === column) {
-            setDeptSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
-        } else {
-            setDeptSortColumn(column);
-            setDeptSortDirection("asc");
-        }
-    };
 
     const handleApprove = (req: PendingRequestItem) => {
         modals.openConfirmModal({
@@ -199,26 +189,22 @@ export default function AdminDashboard() {
     const validTodayAbsences = todayAbsences.filter((req) => req.employeeName)
     const validUpcomingAbsences = upcomingAbsences.filter((req) => req.employeeName)
 
-    // Department Status pokazuje wylacznie dzialy, w ktorych co najmniej jedna
-    // osoba jest aktualnie na urlopie (onLeave > 0).
-    const sortedDepartmentOverview = (
-        deptSortColumn
-            ? sortItems(
-                  data.departmentOverview,
-                  (dept) => {
-                      switch (deptSortColumn) {
-                          case "name":
-                              return dept.name;
-                          case "count":
-                              return dept.count;
-                          case "onLeave":
-                              return dept.onLeave;
-                      }
-                  },
-                  deptSortDirection,
-              )
-            : data.departmentOverview
-    ).filter((dept) => dept.onLeave > 0)
+    const todaySickCount = validTodayAbsences.filter((absence) => absence.type === "sick").length
+    const todayLeaveCount = validTodayAbsences.length - todaySickCount
+
+    const departmentAbsences = new Map<string, Set<string>>()
+    for (const absence of validTodayAbsences) {
+        const department = absence.departmentName || "No Department"
+        const employeeKey = absence.employee || absence.employeeEmail || absence._id
+        const employeeKeys = departmentAbsences.get(department) ?? new Set<string>()
+        employeeKeys.add(employeeKey)
+        departmentAbsences.set(department, employeeKeys)
+    }
+    const absencesByDepartment = Array.from(
+        departmentAbsences,
+        ([name, employeeKeys]) => ({ name, absent: employeeKeys.size }),
+    ).sort((a, b) => b.absent - a.absent || a.name.localeCompare(b.name))
+
     return (
         <Stack gap="lg">
             <Paper p="lg" radius="md" withBorder style={{ background: "var(--mantine-color-dark-8)", color: "var(--mantine-color-white)" , display: 'none'}} > //temporary hidden
@@ -270,9 +256,6 @@ export default function AdminDashboard() {
                             <Text size="lg" fw={700} lh={1}>
                                 {data.totalEmployees}
                             </Text>
-                            <Text size="xs" c="dimmed">
-                                • {data.departmentOverview.length} depts
-                            </Text>
                         </Group>
                     </Flex>
                 </Paper>
@@ -281,7 +264,7 @@ export default function AdminDashboard() {
                     <Flex direction="column" gap="xs" h="100%">
                         <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs" mih={38}>
                             <Text size="xs" c="dimmed" fw={600} style={{ textTransform: "uppercase" }}>
-                                Currently On Leave Today
+                                Currently Off Today
                             </Text>
                             <ThemeIcon variant="light" color="teal" size="sm" style={{ flexShrink: 0 }}>
                                 <IconCalendarStats size={14} />
@@ -289,18 +272,11 @@ export default function AdminDashboard() {
                         </Group>
                         <Group align="baseline" gap="xs">
                             <Text size="lg" fw={700} lh={1}>
-                                {data.activeOnLeave}
+                                {validTodayAbsences.length}
                             </Text>
-                            <Tooltip
-                                label={`${data.activeOnLeave} of ${data.totalEmployees} employees (active and invited; inactive excluded)`}
-                                withArrow
-                            >
-                                <Text size="xs" c="dimmed" style={{ cursor: "help" }}>
-                                    • {data.totalEmployees > 0
-                                        ? `${((data.activeOnLeave / data.totalEmployees) * 100).toFixed(1)}% of ${data.totalEmployees}`
-                                        : "0%"}
-                                </Text>
-                            </Tooltip>
+                            <Text size="xs" c="dimmed">
+                                • {todayLeaveCount} Leave · {todaySickCount} Sick
+                            </Text>
                         </Group>
                     </Flex>
                 </Paper>
@@ -476,7 +452,13 @@ export default function AdminDashboard() {
                                                                     >
                                                                         View Details
                                                                     </Menu.Item>
-                                                                    <Menu.Item color="blue">Adjust Balance</Menu.Item>
+                                                                    <Menu.Item
+                                                                        color="blue"
+                                                                        component={Link}
+                                                                        href={`/team/employees/${req.employee}/profile`}
+                                                                    >
+                                                                        Employee Profile
+                                                                    </Menu.Item>
                                                                 </Menu.Dropdown>
                                                             </Menu>
                                                         </Group>
@@ -493,68 +475,41 @@ export default function AdminDashboard() {
 
                 <Grid.Col span={{ base: 12, lg: 4 }}>
                     <Paper p="lg" radius="md" withBorder style={{ height: "100%" }}>
-                        <Group justify="space-between" mb="md">
+                        <Group justify="space-between" align="center" mb="md">
                             <Title order={3} size="h4">
-                                Department Status
+                                Today&apos;s Absences by Department
                             </Title>
-                            <ActionIcon variant="subtle" color="gray" component={Link} href="/team/departments">
-                                <IconAdjustments size={16} />
-                            </ActionIcon>
                         </Group>
 
-                        <Text size="xs" c="dimmed" mb="lg">
-                            Active absences proportion per department.
-                        </Text>
-
-                        {sortedDepartmentOverview.length === 0 ? (
+                        {absencesByDepartment.length === 0 ? (
                             <Text ta="center" py="xl" c="dimmed" size="sm">
-                                No departments with active leave
+                                No absences today
                             </Text>
                         ) : (
-                            <Stack gap="md">
-                                <Group justify="space-between" align="center" wrap="nowrap" mb="xs">
-                                    <Group gap="lg" wrap="nowrap">
-                                        <SortableHeader
-                                            label="Department"
-                                            active={deptSortColumn === "name"}
-                                            direction={deptSortDirection}
-                                            onSort={() => handleDeptSort("name")}
-                                            fullWidth={false}
-                                        />
-                                        <SortableHeader
-                                            label="Members"
-                                            active={deptSortColumn === "count"}
-                                            direction={deptSortDirection}
-                                            onSort={() => handleDeptSort("count")}
-                                            fullWidth={false}
-                                        />
-                                    </Group>
-                                    <SortableHeader
-                                        label="On Leave"
-                                        active={deptSortColumn === "onLeave"}
-                                        direction={deptSortDirection}
-                                        onSort={() => handleDeptSort("onLeave")}
-                                        fullWidth={false}
-                                    />
-                                </Group>
-                                {sortedDepartmentOverview.map((dept, index) => (
-                                    <Paper key={index} p="sm" radius="sm" withBorder bg="var(--mantine-color-gray-0)">
-                                        <Group justify="space-between" align="center">
-                                            <Box>
+                            <Table verticalSpacing="xs" horizontalSpacing="sm">
+                                <Table.Thead>
+                                    <Table.Tr>
+                                        <Table.Th>Department</Table.Th>
+                                        <Table.Th ta="right">Absent</Table.Th>
+                                    </Table.Tr>
+                                </Table.Thead>
+                                <Table.Tbody>
+                                    {absencesByDepartment.map((department) => (
+                                        <Table.Tr key={department.name}>
+                                            <Table.Td>
                                                 <Text size="sm" fw={500}>
-                                                    {dept.name}
+                                                    {department.name}
                                                 </Text>
-                                                <Text size="xs" c="dimmed">
-                                                    {dept.count} members
-                                                </Text>
-                                            </Box>
-                                            <Badge color={dept.onLeave > 3 ? "orange" : "gray"} variant="light">
-                                                {dept.onLeave} on leave
-                                            </Badge>
-                                        </Group>
-                                    </Paper>
-                                ))}
-                            </Stack>
+                                            </Table.Td>
+                                            <Table.Td ta="right">
+                                                <Badge variant="light" color="blue">
+                                                    {department.absent}
+                                                </Badge>
+                                            </Table.Td>
+                                        </Table.Tr>
+                                    ))}
+                                </Table.Tbody>
+                            </Table>
                         )}
                     </Paper>
                 </Grid.Col>
@@ -630,15 +585,26 @@ export default function AdminDashboard() {
                                             <Text size="sm" fw={600} c="dimmed">
                                                 {dayjs(absence.startDate).format("DD-MM-YYYY")} → {dayjs(absence.endDate).format("DD-MM-YYYY")}
                                             </Text>
-                                            <Badge
-                                                color={absence.source === "absence" ? "orange" : "green"}
-                                                variant="outline"
-                                                size="lg"
-                                                radius="xl"
-                                                leftSection={<Box style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: absence.source === "absence" ? "var(--mantine-color-orange-6)" : "var(--mantine-color-green-6)" }} />}
-                                            >
-                                                {absence.source === "absence" ? "RECORDED" : "APPROVED"}
-                                            </Badge>
+                                            {absence.source === "absence" ? (
+                                                <Badge
+                                                    color={absenceTypeColors[absence.type] ?? "gray"}
+                                                    variant="light"
+                                                    size="lg"
+                                                    radius="xl"
+                                                >
+                                                    {absenceTypeLabels[absence.type] ?? absence.type}
+                                                </Badge>
+                                            ) : (
+                                                <Badge
+                                                    color="green"
+                                                    variant="outline"
+                                                    size="lg"
+                                                    radius="xl"
+                                                    leftSection={<Box style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: "var(--mantine-color-green-6)" }} />}
+                                                >
+                                                    APPROVED
+                                                </Badge>
+                                            )}
                                         </Group>
                                     </Group>
                                 </Paper>

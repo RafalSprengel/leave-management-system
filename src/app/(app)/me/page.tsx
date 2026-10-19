@@ -271,7 +271,7 @@ export default function EmployeeDashboard() {
         </Group>
       </Paper>
 
-      <SimpleGrid cols={3} spacing={{ base: "xs", sm: "lg" }}>
+      <SimpleGrid cols={3} spacing={{ base: 6, sm: "lg" }}>
         <Card p={{ base: "xs", sm: "lg" }} radius="md" withBorder h="100%">
           <Flex direction="column" gap="xs" h="100%">
             <Group
@@ -302,16 +302,29 @@ export default function EmployeeDashboard() {
               </ThemeIcon>
             </Group>
             <Stack gap={0}>
-              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+              <Text fw={700} fz={{ base: 18, sm: 28 }} lh={1.15}>
                 {hasAnnualData ? `${Math.round(usagePercent)}%` : "—"}
               </Text>
               {hasAnnualData ? (
                 <>
-                  <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
-                    <Badge variant="light" color="yellow" size="sm">
+                  <Group gap={4} mt="sm" wrap="wrap">
+                    <Badge
+                      variant="light"
+                      color="yellow"
+                      size="sm"
+                      styles={{
+                        root: { height: "auto", paddingBlock: 2 },
+                        label: {
+                          whiteSpace: "normal",
+                          textAlign: "center",
+                          fontSize: "clamp(9px, 2.5vw, 12px)",
+                          lineHeight: 1.2,
+                        },
+                      }}
+                    >
                       {annualDaysUsed} of {holidayAllowance} days used
                     </Badge>
-                    <Text size="xs" c="dimmed">
+                    <Text size="xs" fz={{ base: 10, sm: 12 }} c="dimmed">
                       {remainingDays} days left
                     </Text>
                   </Group>
@@ -321,8 +334,21 @@ export default function EmployeeDashboard() {
                   </Progress.Root>
                 </>
               ) : (
-                <Group gap="xs" mt="sm" visibleFrom="sm">
-                  <Badge variant="light" color="gray" size="sm">
+                <Group gap={4} mt="sm">
+                  <Badge
+                    variant="light"
+                    color="gray"
+                    size="sm"
+                    styles={{
+                      root: { height: "auto", paddingBlock: 2 },
+                      label: {
+                        whiteSpace: "normal",
+                        textAlign: "center",
+                        fontSize: "clamp(9px, 2.5vw, 12px)",
+                        lineHeight: 1.2,
+                      },
+                    }}
+                  >
                     No allowance data
                   </Badge>
                 </Group>
@@ -361,11 +387,24 @@ export default function EmployeeDashboard() {
               </ThemeIcon>
             </Group>
             <Stack gap={0}>
-              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+              <Text fw={700} fz={{ base: 18, sm: 28 }} lh={1.15}>
                 {sickDaysThisYear}
               </Text>
-              <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
-                <Badge variant="light" color="red" size="sm">
+              <Group gap={4} mt="sm" wrap="wrap">
+                <Badge
+                  variant="light"
+                  color="red"
+                  size="sm"
+                  styles={{
+                    root: { height: "auto", paddingBlock: 2 },
+                    label: {
+                      whiteSpace: "normal",
+                      textAlign: "center",
+                      fontSize: "clamp(9px, 2.5vw, 12px)",
+                      lineHeight: 1.2,
+                    },
+                  }}
+                >
                   days this year
                 </Badge>
               </Group>
@@ -403,14 +442,27 @@ export default function EmployeeDashboard() {
               </ThemeIcon>
             </Group>
             <Stack gap={0}>
-              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+              <Text fw={700} fz={{ base: 18, sm: 28 }} lh={1.15}>
                 {pendingCount}
               </Text>
-              <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
-                <Badge variant="light" color="orange" size="sm">
+              <Group gap={4} mt="sm" wrap="wrap">
+                <Badge
+                  variant="light"
+                  color="orange"
+                  size="sm"
+                  styles={{
+                    root: { height: "auto", paddingBlock: 2 },
+                    label: {
+                      whiteSpace: "normal",
+                      textAlign: "center",
+                      fontSize: "clamp(9px, 2.5vw, 12px)",
+                      lineHeight: 1.2,
+                    },
+                  }}
+                >
                   {pendingDays} {pendingDays === 1 ? "day" : "days"}
                 </Badge>
-                <Text size="xs" c="dimmed">
+                <Text size="xs" fz={{ base: 10, sm: 12 }} c="dimmed">
                   {pendingCount} {pendingCount === 1 ? "request" : "requests"}
                 </Text>
               </Group>

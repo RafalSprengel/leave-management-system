@@ -55,7 +55,7 @@ export function EmployeeStatsCharts({
 
   return (
     <Stack gap="xl">
-      <SimpleGrid cols={3} spacing={{ base: "xs", sm: "lg" }}>
+      <SimpleGrid cols={3} spacing={{ base: 6, sm: "lg" }}>
         <Card p={{ base: "xs", sm: "lg" }} radius="md" withBorder h="100%">
           <Flex direction="column" gap="xs" h="100%">
             <Group
@@ -86,17 +86,30 @@ export function EmployeeStatsCharts({
               </ThemeIcon>
             </Group>
             <Stack gap={0}>
-              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+              <Text fw={700} fz={{ base: 18, sm: 28 }} lh={1.15}>
                 {hasAnnualData ? `${Math.round(usedPercent)}%` : "—"}
               </Text>
-              <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
-                <Badge variant="light" color="yellow" size="sm">
+              <Group gap={4} mt="sm" wrap="wrap">
+                <Badge
+                  variant="light"
+                  color="yellow"
+                  size="sm"
+                  styles={{
+                    root: { height: "auto", paddingBlock: 2 },
+                    label: {
+                      whiteSpace: "normal",
+                      textAlign: "center",
+                      fontSize: "clamp(9px, 2.5vw, 12px)",
+                      lineHeight: 1.2,
+                    },
+                  }}
+                >
                   {hasAnnualData
                     ? `${annual.used} of ${annualTotal} days used`
                     : "No allowance data"}
                 </Badge>
                 {hasAnnualData && (
-                  <Text size="xs" c="dimmed">
+                  <Text size="xs" fz={{ base: 10, sm: 12 }} c="dimmed">
                     {annual.remaining} days left
                   </Text>
                 )}
@@ -141,14 +154,21 @@ export function EmployeeStatsCharts({
               </ThemeIcon>
             </Group>
             <Stack gap={0}>
-              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+              <Text fw={700} fz={{ base: 18, sm: 28 }} lh={1.15}>
                 {sickThisPeriod}
               </Text>
-              <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
-                <Badge variant="light" color="red" size="sm">
+              <Group gap={4} mt="sm" wrap="wrap">
+                <Badge
+                  variant="light"
+                  color="red"
+                  size="sm"
+                  styles={{
+                    label: { fontSize: "clamp(9px, 2.5vw, 12px)" },
+                  }}
+                >
                   days
                 </Badge>
-                <Text size="xs" c="dimmed">
+                <Text size="xs" fz={{ base: 10, sm: 12 }} c="dimmed">
                   current holiday year
                 </Text>
               </Group>
@@ -186,13 +206,26 @@ export function EmployeeStatsCharts({
               </ThemeIcon>
             </Group>
             <Stack gap={0}>
-              <Text fw={700} fz={{ base: 20, sm: 28 }} lh={1.15}>
+              <Text fw={700} fz={{ base: 18, sm: 28 }} lh={1.15}>
                 {employmentDate
                   ? formatTenure(getTenureDays(employmentDate))
                   : "-"}
               </Text>
-              <Group gap="xs" mt="sm" wrap="wrap" visibleFrom="sm">
-                <Badge variant="light" color="blue" size="sm">
+              <Group gap={4} mt="sm" wrap="wrap">
+                <Badge
+                  variant="light"
+                  color="blue"
+                  size="sm"
+                  styles={{
+                    root: { height: "auto", paddingBlock: 2 },
+                    label: {
+                      whiteSpace: "normal",
+                      textAlign: "center",
+                      fontSize: "clamp(9px, 2.5vw, 12px)",
+                      lineHeight: 1.2,
+                    },
+                  }}
+                >
                   {employmentDate
                     ? `Since ${dayjs(employmentDate).format("DD.MM.YYYY")}`
                     : "No employment date"}

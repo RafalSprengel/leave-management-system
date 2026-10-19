@@ -9,11 +9,11 @@ export interface TeamDashboardData {
     todayAbsences: PendingRequestItem[];
     upcomingAbsences: PendingRequestItem[];
     pendingRequests: PendingRequestItem[];
-    departmentOverview: DepartmentOverviewItem[];
 }
 
 export interface PendingRequestItem {
     _id: string;
+    employee?: string;
     startDate: string;
     endDate: string;
     /** Dni pracujace wniosku - wartosc pochodna, liczona przy odczycie. */
@@ -24,10 +24,4 @@ export interface PendingRequestItem {
     employeeEmail?: string;
     departmentName?: string;
     createdAt: string;
-}
-
-export interface DepartmentOverviewItem {
-    name: string;
-    count: number;
-    onLeave: number;
 }

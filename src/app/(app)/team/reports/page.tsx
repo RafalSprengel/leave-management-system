@@ -199,13 +199,6 @@ interface EmployeeTenure {
   employmentDate: string;
   tenureDays: number;
 }
-interface DepartmentTurnover {
-  department: string;
-  active: number;
-  inactive: number;
-  total: number;
-  turnoverRate: number;
-}
 interface SickEntry {
   key: string;
   name: string;
@@ -543,30 +536,6 @@ export default function ReportsPage() {
     })
     .sort((a, b) => b.tenureDays - a.tenureDays);
 
-  // ---- 7. Turnover ----
-  const deptCount = new Map<
-    string,
-    { active: number; inactive: number; total: number }
-  >();
-  for (const e of employees) {
-    const dept = e.departmentName || "No Department";
-    if (!deptCount.has(dept))
-      deptCount.set(dept, { active: 0, inactive: 0, total: 0 });
-    const d = deptCount.get(dept)!;
-    d.total++;
-    if (e.status === "active") d.active++;
-    else if (e.status === "inactive") d.inactive++;
-  }
-  const turnoverData: DepartmentTurnover[] = Array.from(deptCount.entries())
-    .map(([department, counts]) => ({
-      department,
-      ...counts,
-      turnoverRate:
-        counts.total > 0
-          ? Math.round((counts.inactive / counts.total) * 100)
-          : 0,
-    }))
-    .sort((a, b) => b.turnoverRate - a.turnoverRate);
   return (
     <Stack gap="xl">
       <Group justify="space-between" align="flex-end" wrap="wrap" gap="sm">
@@ -724,6 +693,7 @@ export default function ReportsPage() {
                 withLabelsLine
                 labelsType="value"
                 withLegend
+                style={{ position: "relative", zIndex: 1 }}
               />
               <Stack
                 gap={2}
@@ -902,58 +872,6 @@ export default function ReportsPage() {
           )}
         </Paper>
       </SimpleGrid>
-      {/* Section 8: Turnover */}
-      <Paper p="lg" radius="md" withBorder>
-        <Group gap="xs" mb="md">
-          <IconUsers size={22} />
-          <Title order={4}>Employee Turnover by Department</Title>
-        </Group>
-        {turnoverData.length === 0 ? (
-          <Text size="sm" c="dimmed">
-            No data.
-          </Text>
-        ) : (
-          <SortableReportTable
-            rows={turnoverData}
-            columns={[
-              {
-                key: "department",
-                label: "Department",
-                getValue: (d) => d.department,
-                render: (d) => d.department,
-              },
-              {
-                key: "active",
-                label: "Active",
-                align: "right",
-                getValue: (d) => d.active,
-                render: (d) => d.active,
-              },
-              {
-                key: "inactive",
-                label: "Inactive",
-                align: "right",
-                getValue: (d) => d.inactive,
-                render: (d) => d.inactive,
-              },
-              {
-                key: "total",
-                label: "Total",
-                align: "right",
-                getValue: (d) => d.total,
-                render: (d) => d.total,
-              },
-              {
-                key: "turnoverRate",
-                label: "Turnover Rate",
-                align: "right",
-                getValue: (d) => d.turnoverRate,
-                render: (d) => `${d.turnoverRate}%`,
-              },
-            ]}
-          />
-        )}
-      </Paper>
     </Stack>
   );
 }
