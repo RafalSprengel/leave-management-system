@@ -85,7 +85,7 @@ export default function LayoutClient({
 
           <Group gap="sm">
             {/* Notifications Dropdown */}
-            <NotificationsDropdown />
+            <NotificationsDropdown role={role} />
 
             <Menu shadow="md" width={200} position="bottom-end">
               <Menu.Target>
@@ -109,7 +109,10 @@ export default function LayoutClient({
 
               <Menu.Dropdown>
                 <Menu.Label>Account</Menu.Label>
-                <Menu.Item leftSection={<IconUser size={14} />}>
+                <Menu.Item
+                  leftSection={<IconUser size={14} />}
+                  onClick={() => router.push("/profile")}
+                >
                   Profile
                 </Menu.Item>
                 {role === "Manager" && (

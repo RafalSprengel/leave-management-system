@@ -5,9 +5,15 @@ import LeaveRequest from "@/db/models/LeaveRequest";
 import { getOrganizationId } from "@/utils/getOrganizationId";
 import type { TeamLeaveRequestItem } from "@/types/leaveRequest";
 import { addChargedDays } from "@/utils/enrichLeaveRequests";
+import { getCurrentEmployeeRole } from "@/actions/shared/getCurrentEmployeeRole";
 
 export async function getTeamLeaveRequests() {
     try {
+        const { success, role } = await getCurrentEmployeeRole();
+        if (!success || role !== "Manager") {
+            return { success: false, error: "Forbidden: managers only" };
+        }
+
         await connectDB();
         const orgId = await getOrganizationId();
 

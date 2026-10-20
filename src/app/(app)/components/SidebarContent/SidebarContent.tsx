@@ -354,19 +354,27 @@ export default function SidebarContent({
       <div className={styles.bottomSection}>
         <Divider color="#222" my="md" />
         <Group justify="space-between" px="md" wrap="nowrap">
-          <Group gap="xs" wrap="nowrap">
-            <Avatar color="gray" radius="xl">
-              {initials || "?"}
-            </Avatar>
-            <div style={{ overflow: "hidden" }}>
-              <Text size="sm" fw={600} truncate>
-                {loading ? "..." : fullName || "User"}
-              </Text>
-              <Text size="xs" c="dimmed" truncate>
-                {employee?.email || ""}
-              </Text>
-            </div>
-          </Group>
+          <UnstyledButton
+            component={Link}
+            href="/profile"
+            prefetch={false}
+            onClick={onClose}
+            className={styles.profileLink}
+          >
+            <Group gap="xs" wrap="nowrap">
+              <Avatar color="gray" radius="xl">
+                {initials || "?"}
+              </Avatar>
+              <div style={{ overflow: "hidden" }}>
+                <Text size="sm" fw={600} truncate>
+                  {loading ? "..." : fullName || "User"}
+                </Text>
+                <Text size="xs" c="dimmed" truncate>
+                  {employee?.email || ""}
+                </Text>
+              </div>
+            </Group>
+          </UnstyledButton>
           <Group gap={4} wrap="nowrap">
             <ActionIcon
               onClick={toggleColorScheme}

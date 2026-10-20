@@ -40,7 +40,7 @@ import { getLeaveTypeLabel, LEAVE_REQUEST_TYPES } from "@/constants/leaveTypes";
 import { useCurrentEmployee } from "@/hooks/useCurrentEmployee";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useMyLeaveRequests } from "@/hooks/useMyLeaveRequests";
-import { useTeamLeaveRequests } from "@/hooks/useTeamLeaveRequests";
+import { useColleagueLeaveRequests } from "@/hooks/useColleagueLeaveRequests";
 import type { IAbsenceItem } from "@/types/absence";
 import { sumAnnualDaysUsed } from "@/utils/leaveBalance";
 import { type SortDirection, sortItems } from "@/utils/sort";
@@ -63,7 +63,7 @@ export default function EmployeeDashboard() {
   const { requests, loading: requestsLoading } = useMyLeaveRequests();
   const { employees, loading: loadingEmployees } = useEmployees();
   const { requests: teamRequests, loading: loadingTeamRequests } =
-    useTeamLeaveRequests();
+    useColleagueLeaveRequests();
 
   const [sickDaysThisYear, setSickDaysThisYear] = useState(0);
   const [absences, setAbsences] = useState<IAbsenceItem[]>([]);

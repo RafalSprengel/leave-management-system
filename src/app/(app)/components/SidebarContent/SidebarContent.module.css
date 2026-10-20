@@ -82,6 +82,18 @@
   padding-bottom: 20px;
 }
 
+.profileLink {
+  display: flex;
+  min-width: 0;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.profileLink:hover {
+  background-color: #1a1a1a;
+}
+
 .themeBtn {
   color: #868e96;
 }

@@ -46,7 +46,7 @@ interface SafeRequestItem {
     createdAt: string;
 }
 
-export function NotificationsDropdown() {
+export function NotificationsDropdown({ role }: { role: "Manager" | "Employee" | null }) {
     const router = useRouter();
     const theme = useMantineTheme();
     const isMobile = useMediaQuery(`(max-width: ${theme.breakpoints.sm})`);
@@ -74,10 +74,16 @@ export function NotificationsDropdown() {
     };
 
     useEffect(() => {
-        if (opened) {
+        if (role === "Manager") {
             fetchPendingRequests();
         }
-    }, [opened]);
+    }, [role]);
+
+    useEffect(() => {
+        if (opened && role === "Manager") {
+            fetchPendingRequests();
+        }
+    }, [opened, role]);
 
     const handleRequestClick = (id: string) => {
         setOpened(false);
@@ -246,6 +252,10 @@ export function NotificationsDropdown() {
             )}
         </>
     );
+
+    if (role !== "Manager") {
+        return null;
+    }
 
     return (
         <>

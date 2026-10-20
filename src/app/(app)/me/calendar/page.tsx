@@ -23,7 +23,7 @@ import { getLeaveTypeLabel } from "@/constants/leaveTypes";
 import { useCurrentEmployee } from "@/hooks/useCurrentEmployee";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useMyLeaveRequests } from "@/hooks/useMyLeaveRequests";
-import { useTeamLeaveRequests } from "@/hooks/useTeamLeaveRequests";
+import { useColleagueLeaveRequests } from "@/hooks/useColleagueLeaveRequests";
 import { useNonWorkingDays } from "@/hooks/useNonWorkingDays";
 import { getWorkingDays } from "@/utils/workingDays";
 
@@ -64,7 +64,7 @@ export default function EmployeeCalendarPage() {
   const { requests: myRequests, loading: loadingMyRequests } =
     useMyLeaveRequests();
   const { requests: teamRequests, loading: loadingTeamRequests } =
-    useTeamLeaveRequests();
+    useColleagueLeaveRequests();
   const { bankHolidaysMap, closuresMap, loading: loadingClosures } =
     useNonWorkingDays();
 
