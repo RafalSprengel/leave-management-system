@@ -213,7 +213,7 @@ function createAuth(db: Db) {
 
                             // No pre-created record (e.g. this user created/owns the
                             // organization itself) - create a fresh HR profile.
-                            const alreadyLinked = await Employee.findOne({ userId: member.userId });
+                            const alreadyLinked = await Employee.findOne({ userId: member.userId, organizationId: org.id });
                             if (alreadyLinked) return;
 
                             // For the org creator, ensure the default "Administration"

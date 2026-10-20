@@ -32,10 +32,15 @@ export async function getCurrentEmployeeRole(options?: {
         }
 
         const resolvedUserId = session.user.id;
+        const organizationId = session.session?.activeOrganizationId;
+
+        if (!organizationId) {
+            return { success: false, role: null, error: "No active organization" };
+        }
 
         await dbConnect();
 
-        const employee = await Employee.findOne({ userId: resolvedUserId }).lean();
+        const employee = await Employee.findOne({ userId: resolvedUserId, organizationId }).lean();
 
         if (!employee) {
             return { success: false, role: null, error: "No Employee profile linked to this account" };

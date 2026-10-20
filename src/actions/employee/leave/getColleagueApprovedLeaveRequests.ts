@@ -18,7 +18,7 @@ export async function getColleagueApprovedLeaveRequests() {
     await connectDB();
     const organizationId = await getOrganizationId();
 
-    const me = await Employee.findOne({ userId: session.user.id }).lean();
+    const me = await Employee.findOne({ userId: session.user.id, organizationId }).lean();
     if (!me || !me.department) {
       return { success: true, data: [] };
     }

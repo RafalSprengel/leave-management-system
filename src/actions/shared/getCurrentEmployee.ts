@@ -4,6 +4,7 @@ import { getCachedSession } from "@/lib/session";
 import dbConnect from "@/db/connection";
 import Employee from "@/db/models/Employee";
 import type { IEmployee } from "@/types/employees";
+import { getOrganizationId } from "@/utils/getOrganizationId";
 
 export async function getCurrentEmployee(): Promise<{
     success: boolean;
@@ -19,7 +20,9 @@ export async function getCurrentEmployee(): Promise<{
 
         await dbConnect();
 
-        const employee = await Employee.findOne({ userId: session.user.id })
+        const organizationId = await getOrganizationId();
+
+        const employee = await Employee.findOne({ userId: session.user.id, organizationId })
             .populate("department")
             .lean();
 

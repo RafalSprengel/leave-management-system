@@ -64,7 +64,7 @@ const EmployeeSchema = new Schema<IEmployeeDocument>(
     { timestamps: true }
 );
 
-EmployeeSchema.index({ userId: 1 }, { unique: true, sparse: true });
+EmployeeSchema.index({ userId: 1, organizationId: 1 }, { unique: true, sparse: true });
 EmployeeSchema.index({ email: 1, organizationId: 1 }, { unique: true });
 EmployeeSchema.index({ organizationId: 1, department: 1, status: 1 });
 
