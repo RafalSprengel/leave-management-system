@@ -359,7 +359,7 @@ export default function NewEmployeeLeaveRequestPage() {
                           }}
                         />
                         <Text size="xs" c="dimmed">
-                          Leave
+                          Booked Leave
                         </Text>
                       </Group>
                       <Group gap="xs" align="center">

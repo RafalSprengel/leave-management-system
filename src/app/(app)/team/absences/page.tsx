@@ -12,6 +12,7 @@ import {
     Modal,
     NumberInput,
     Pagination,
+    Paper,
     Select,
     Stack,
     Text,
@@ -235,23 +236,22 @@ export default function AbsencesPage() {
     return (
         <>
             <Stack gap="md" style={{ maxWidth: 800 }}>
-                <Group justify="space-between" align="center" wrap="wrap" gap="sm">
-                    <Title order={4} m={0}>
+                <Group justify="space-between" align="center">
+                    <Title order={2} fw="700">
                         Absences
                     </Title>
+                    <Button leftSection={<IconPlus size={18} />} onClick={() => setModalOpen(true)}>
+                        Record Absence
+                    </Button>
+                </Group>
 
-                    <Group gap="xs" wrap="wrap">
-                        <TextInput
-                            size="xs"
-                            placeholder="Search employee or department…"
-                            leftSection={<IconSearch size={14} />}
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.currentTarget.value);
-                                setPage(1);
-                            }}
-                            style={{ minWidth: 220 }}
-                        />
+                <Paper
+                    p="md"
+                    radius="md"
+                    withBorder
+                    bg="var(--mantine-color-body)"
+                >
+                    <Group justify="space-between" mb="md" gap="xs" wrap="wrap">
                         <Select
                             size="xs"
                             placeholder="All types"
@@ -267,116 +267,120 @@ export default function AbsencesPage() {
                             }}
                             style={{ minWidth: 150 }}
                         />
-                        <Button
+                        <TextInput
                             size="xs"
-                            leftSection={<IconPlus size={14} />}
-                            onClick={() => setModalOpen(true)}
-                        >
-                            Record Absence
-                        </Button>
+                            placeholder="Search employee or department…"
+                            leftSection={<IconSearch size={14} />}
+                            value={search}
+                            onChange={(e) => {
+                                setSearch(e.currentTarget.value);
+                                setPage(1);
+                            }}
+                            style={{ minWidth: 220 }}
+                        />
                     </Group>
-                </Group>
 
-                {loading ? (
-                    <Group justify="center" py="xl">
-                        <Loader size="sm" />
-                    </Group>
-                ) : filteredAbsences.length === 0 ? (
-                    <Stack align="center" gap="xs" py="xl" c="dimmed">
-                        <IconUserOff size={36} stroke={1.2} />
-                        <Text size="sm">
-                            {absences.length === 0
-                                ? "No absences recorded yet."
-                                : "No absences match the current filters."}
-                        </Text>
-                    </Stack>
-                ) : (
-                    <Stack gap="xs">
-                        {visibleAbsences.map((a) => (
-                            <Card
-                                key={a.id}
-                                p="sm"
-                                radius="sm"
-                                withBorder
-                                bg="light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6))"
-                            >
-                                <Group justify="space-between" wrap="nowrap" align="flex-start">
-                                    <Group gap="sm" wrap="nowrap" align="flex-start">
-                                        <Avatar radius="xl" size="md" color="gray">
-                                            {(a.employeeName ?? "?")
-                                                .split(" ")
-                                                .map((n) => n[0])
-                                                .join("")
-                                                .slice(0, 2)
-                                                .toUpperCase()}
-                                        </Avatar>
-                                        <div style={{ minWidth: 0 }}>
-                                            <Group gap="xs" wrap="wrap">
-                                                <Text size="sm" fw={600}>
-                                                    {a.employeeName ?? "Unknown"}
-                                                </Text>
-                                                <Badge
-                                                    size="xs"
-                                                    color={TYPE_COLORS[a.type]}
-                                                    variant="light"
-                                                >
-                                                    {TYPE_LABELS[a.type]}
-                                                </Badge>
-                                            </Group>
-                                            {a.departmentName && (
-                                                <Text size="xs" c="dimmed">
-                                                    {a.departmentName}
-                                                </Text>
-                                            )}
-                                            <Text size="xs" c="dimmed" mt={2}>
-                                                <IconCalendarOff
-                                                    size={11}
-                                                    style={{ verticalAlign: "middle", marginRight: 4 }}
-                                                />
-                                                {dayjs(a.startDate).format("D MMM YYYY")}
-                                                {a.startDate !== a.endDate &&
-                                                    ` → ${dayjs(a.endDate).format("D MMM YYYY")}`}
-                                                {" · "}
-                                                <Text component="span" fw={500}>
-                                                    {a.daysCount} day{a.daysCount !== 1 ? "s" : ""}
-                                                </Text>
-                                            </Text>
-                                            {a.note && (
-                                                <Text size="xs" c="dimmed" mt={2} fs="italic">
-                                                    {a.note}
-                                                </Text>
-                                            )}
-                                        </div>
-                                    </Group>
-
-                                    <Tooltip label="Remove record" withArrow>
-                                        <ActionIcon
-                                            color="red"
-                                            variant="subtle"
-                                            onClick={() => handleDelete(a.id, a.employeeName)}
-                                        >
-                                            <IconTrash size={16} />
-                                        </ActionIcon>
-                                    </Tooltip>
-                                </Group>
-                            </Card>
-                        ))}
-                        <Stack gap={8} align="center" mt="sm">
-                            <Pagination
-                                total={totalPages}
-                                value={activePage}
-                                onChange={setPage}
-                                size="sm"
-                                withEdges
-                                hideWithOnePage
-                            />
-                            <Text size="xs" c="dimmed">
-                                {firstVisible}–{lastVisible} of{" "}
-                                {filteredAbsences.length}
+                    {loading ? (
+                        <Group justify="center" py="xl">
+                            <Loader size="sm" />
+                        </Group>
+                    ) : filteredAbsences.length === 0 ? (
+                        <Stack align="center" gap="xs" py="xl" c="dimmed">
+                            <IconUserOff size={36} stroke={1.2} />
+                            <Text size="sm">
+                                {absences.length === 0
+                                    ? "No absences recorded yet."
+                                    : "No absences match the current filters."}
                             </Text>
                         </Stack>
-                    </Stack>
-                )}
+                    ) : (
+                        <Stack gap="xs">
+                            {visibleAbsences.map((a) => (
+                                <Card
+                                    key={a.id}
+                                    p="sm"
+                                    radius="sm"
+                                    withBorder
+                                    bg="light-dark(var(--mantine-color-gray-0), var(--mantine-color-dark-6))"
+                                >
+                                    <Group justify="space-between" wrap="nowrap" align="flex-start">
+                                        <Group gap="sm" wrap="nowrap" align="flex-start">
+                                            <Avatar radius="xl" size="md" color="gray">
+                                                {(a.employeeName ?? "?")
+                                                    .split(" ")
+                                                    .map((n) => n[0])
+                                                    .join("")
+                                                    .slice(0, 2)
+                                                    .toUpperCase()}
+                                            </Avatar>
+                                            <div style={{ minWidth: 0 }}>
+                                                <Group gap="xs" wrap="wrap">
+                                                    <Text size="sm" fw={600}>
+                                                        {a.employeeName ?? "Unknown"}
+                                                    </Text>
+                                                    <Badge
+                                                        size="xs"
+                                                        color={TYPE_COLORS[a.type]}
+                                                        variant="light"
+                                                    >
+                                                        {TYPE_LABELS[a.type]}
+                                                    </Badge>
+                                                </Group>
+                                                {a.departmentName && (
+                                                    <Text size="xs" c="dimmed">
+                                                        {a.departmentName}
+                                                    </Text>
+                                                )}
+                                                <Text size="xs" c="dimmed" mt={2}>
+                                                    <IconCalendarOff
+                                                        size={11}
+                                                        style={{ verticalAlign: "middle", marginRight: 4 }}
+                                                    />
+                                                    {dayjs(a.startDate).format("D MMM YYYY")}
+                                                    {a.startDate !== a.endDate &&
+                                                        ` → ${dayjs(a.endDate).format("D MMM YYYY")}`}
+                                                    {" · "}
+                                                    <Text component="span" fw={500}>
+                                                        {a.daysCount} day{a.daysCount !== 1 ? "s" : ""}
+                                                    </Text>
+                                                </Text>
+                                                {a.note && (
+                                                    <Text size="xs" c="dimmed" mt={2} fs="italic">
+                                                        {a.note}
+                                                    </Text>
+                                                )}
+                                            </div>
+                                        </Group>
+
+                                        <Tooltip label="Remove record" withArrow>
+                                            <ActionIcon
+                                                color="red"
+                                                variant="subtle"
+                                                onClick={() => handleDelete(a.id, a.employeeName)}
+                                            >
+                                                <IconTrash size={16} />
+                                            </ActionIcon>
+                                        </Tooltip>
+                                    </Group>
+                                </Card>
+                            ))}
+                            <Stack gap={8} align="center" mt="sm">
+                                <Pagination
+                                    total={totalPages}
+                                    value={activePage}
+                                    onChange={setPage}
+                                    size="sm"
+                                    withEdges
+                                    hideWithOnePage
+                                />
+                                <Text size="xs" c="dimmed">
+                                    {firstVisible}–{lastVisible} of{" "}
+                                    {filteredAbsences.length}
+                                </Text>
+                            </Stack>
+                        </Stack>
+                    )}
+                </Paper>
             </Stack>
 
             <Modal

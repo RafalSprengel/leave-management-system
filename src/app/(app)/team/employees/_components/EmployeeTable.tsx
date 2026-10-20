@@ -1,7 +1,7 @@
 'use client'
 
 
-import { ActionIcon, Badge, Button, Card, Group, Menu, Pagination, Paper, SegmentedControl, Select, Stack, Table, Text, TextInput, Title, useMatches } from "@mantine/core";
+import { ActionIcon, Badge, Box, Button, Card, Group, Menu, Pagination, Paper, SegmentedControl, Stack, Table, Text, TextInput, Title, useMatches } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconClock, IconDotsVertical, IconEdit, IconKey, IconPlus, IconSearch, IconSend, IconUserCheck, IconUserOff, IconX } from "@tabler/icons-react";
@@ -275,42 +275,20 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
     });
 
     const [filter, setFilter] = useState<"active" | "inactive">("active");
-    const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(1);
     const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
-    const employeeOptions = employees.map((empl) => {
-        const deptName =
-            typeof empl.department === "object"
-                ? empl.department?.name
-                : empl.department;
-
-        return {
-            value: empl._id,
-            label: `${empl.firstName} ${empl.lastName}`,
-            department: deptName || "No department",
-            email: empl.email,
-            role: empl.role,
-        };
-    });
-
     const filteredEmployees = employees.filter((empl) => {
-        // Wyszukiwarka ma pierwszeństwo nad zakładką Active/Deactivated,
-        // dzięki czemu wybrany pracownik jest zawsze widoczny.
-        if (selectedEmployeeId) {
-            if (empl._id !== selectedEmployeeId) return false;
-        } else if (filter === "active") {
-            if (!(empl.status === "active" || empl.status === "invited")) {
-                return false;
-            }
-        } else if (empl.status !== "inactive") {
-            return false;
-        }
-
         const query = search.trim().toLowerCase();
-        if (!query) return true;
+
+        if (!query) {
+            if (filter === "active") {
+                return empl.status === "active" || empl.status === "invited";
+            }
+            return empl.status === "inactive";
+        }
 
         return (
             `${empl.firstName} ${empl.lastName}`.toLowerCase().includes(query) ||
@@ -536,9 +514,21 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
 
     return (
         <Stack gap="lg">
-            <Group justify="space-between" align="flex-end" wrap="wrap" gap="sm">
-                <div>
-                    <Title order={2} fw='700'>Employees</Title>
+            <Group justify="space-between" align="center">
+                <Title order={2} fw='700'>Employees</Title>
+                <Button leftSection={<IconPlus size={18} />} onClick={openNewEmployeeModal}>
+                    Add employee
+                </Button>
+            </Group>
+
+            <Paper
+                p="md"
+                radius="md"
+                withBorder
+                bg="var(--mantine-color-body)"
+                style={{ overflowX: "auto" }}
+            >
+                <Group justify="space-between" mb="md" gap="xs" wrap="wrap">
                     <SegmentedControl
                         value={filter}
                         onChange={(value) => {
@@ -551,8 +541,6 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                         ]}
                         size="xs"
                     />
-                </div>
-                <Group gap="sm" wrap="wrap" align="center">
                     <TextInput
                         placeholder="Search name, email, department…"
                         leftSection={<IconSearch size={16} />}
@@ -563,36 +551,7 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                         }}
                         w={{ base: "100%", sm: 260 }}
                     />
-                    <Select
-                        placeholder="Search employee"
-                        data={employeeOptions}
-                        searchable
-                        clearable
-                        nothingFoundMessage="No employees found"
-                        leftSection={<IconSearch size={16} />}
-                        value={selectedEmployeeId}
-                        onChange={(value) => {
-                            setSelectedEmployeeId(value);
-                            setPage(1);
-                        }}
-                        w={{ base: "100%", sm: 300 }}
-                        renderOption={({ option }) => {
-                            const emp = employeeOptions.find((e) => e.value === option.value);
-                            return (
-                                <div>
-                                    <Text size="sm" fw={600}>{emp?.label}</Text>
-                                    <Text size="xs" c="dimmed">🏢 {emp?.department}</Text>
-                                    <Text size="xs" c="dimmed">✉️ {emp?.email}</Text>
-                                    <Text size="xs" c="dimmed">👤 {emp?.role}</Text>
-                                </div>
-                            );
-                        }}
-                    />
-                    <Button leftSection={<IconPlus size={16} />} onClick={openNewEmployeeModal}>
-                        Add employee
-                    </Button>
                 </Group>
-            </Group>
 
             {isMobile ? (
                 <Stack gap="sm">
@@ -607,7 +566,7 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                     )}
                 </Stack>
             ) : (
-                <Paper withBorder shadow="xs" radius="md">
+                <Box>
                     <Table>
                         <Table.Thead>
                             <Table.Tr>
@@ -629,8 +588,9 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                             )}
                         </Table.Tbody>
                     </Table>
-                </Paper>
+                </Box>
             )}
+            </Paper>
 
             {filteredEmployees.length > 0 && (
                 <Stack gap={8} align="center">

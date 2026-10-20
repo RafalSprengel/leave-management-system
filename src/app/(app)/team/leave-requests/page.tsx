@@ -24,8 +24,8 @@ import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import {
   IconCheck,
-  IconChevronRight,
   IconDotsVertical,
+  IconPlus,
   IconSearch,
   IconSortAscending,
   IconSortDescending,
@@ -92,11 +92,9 @@ export default function TeamLeaveRequestsPage() {
     const query = search.trim().toLowerCase();
 
     const base = requests.filter((req) => {
-      if (statusFilter !== "All" && req.status !== statusFilter.toLowerCase()) {
-        return false;
+      if (!query) {
+        return statusFilter === "All" || req.status === statusFilter.toLowerCase();
       }
-
-      if (!query) return true;
 
       return (
         (req.employeeName ?? "").toLowerCase().includes(query) ||
@@ -277,101 +275,94 @@ export default function TeamLeaveRequestsPage() {
 
   return (
     <Stack gap="lg">
-      <Title order={2}>Team Leave Requests</Title>
+      <Group justify="space-between" align="center">
+        <Title order={2}>Team Leave Requests</Title>
+        <Button
+          component={Link}
+          href="/team/leave-requests/new"
+          leftSection={<IconPlus size={18} />}
+        >
+          Add New
+        </Button>
+      </Group>
 
-      <Flex direction={{ base: "column", lg: "row" }} gap="md">
-        <Box style={{ flex: 1 }}>
-          <Paper p="lg" radius="md" withBorder>
-            <Group justify="space-between" mb="md" align="center">
-              <Box>
-                <Title order={3} size="h4">
-                  All Pending Leave Requests
-                </Title>
-                <Text size="sm" c="dimmed">
-                  Review and override company-wide time off requests
-                </Text>
-              </Box>
-              <Button
-                component={Link}
-                href="/team/leave-requests/new"
-                variant="subtle"
-                size="xs"
-                rightSection={<IconChevronRight size={14} />}
-              >
-                Add New
-              </Button>
-            </Group>
-
-            <Group mb="lg" justify="space-between">
-              <SegmentedControl
-                value={statusFilter}
-                onChange={(value) => {
-                  setStatusFilter(value);
-                  setPage(1);
-                }}
-                size="xs"
-                data={[
-                  { label: `Pending (${pendingCount})`, value: "Pending" },
-                  { label: `Approved (${approvedCount})`, value: "Approved" },
-                  { label: `Rejected (${rejectedCount})`, value: "Rejected" },
-                  { label: `All`, value: "All" },
-                ]}
-                radius="xl"
+      <Paper
+        p="md"
+        radius="md"
+        withBorder
+        bg="var(--mantine-color-body)"
+        style={{ overflowX: "auto" }}
+      >
+        <Group justify="space-between" mb="md" gap="xs" wrap="wrap">
+          <SegmentedControl
+            value={statusFilter}
+            onChange={(value) => {
+              setStatusFilter(value);
+              setPage(1);
+            }}
+            size="xs"
+            data={[
+              { label: `Pending (${pendingCount})`, value: "Pending" },
+              { label: `Approved (${approvedCount})`, value: "Approved" },
+              { label: `Rejected (${rejectedCount})`, value: "Rejected" },
+              { label: `All`, value: "All" },
+            ]}
+            radius="xl"
+            color="blue"
+          />
+          <Group gap="xs" wrap="nowrap">
+            <TextInput
+              size="xs"
+              placeholder="Search employee, department or type…"
+              leftSection={<IconSearch size={14} />}
+              value={search}
+              onChange={(e) => {
+                setSearch(e.currentTarget.value);
+                setPage(1);
+              }}
+              style={{ minWidth: 240 }}
+            />
+            <Tooltip
+              label={
+                sortDirection === "newest"
+                  ? "Newest first — click for oldest first"
+                  : "Oldest first — click for newest first"
+              }
+            >
+              <ActionIcon
+                variant={sortDirection === "newest" ? "light" : "subtle"}
                 color="blue"
-              />
-              <Group gap="xs" wrap="nowrap">
-                <TextInput
-                  size="xs"
-                  placeholder="Search employee, department or type…"
-                  leftSection={<IconSearch size={14} />}
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.currentTarget.value);
-                    setPage(1);
-                  }}
-                  style={{ minWidth: 240 }}
-                />
-                <Tooltip
-                  label={
-                    sortDirection === "newest"
-                      ? "Newest first — click for oldest first"
-                      : "Oldest first — click for newest first"
-                  }
-                >
-                  <ActionIcon
-                    variant={sortDirection === "newest" ? "light" : "subtle"}
-                    color="blue"
-                    radius="xl"
-                    onClick={() => {
-                      setSortColumn(null);
-                      setPage(1);
-                      setSortDirection(
-                        sortDirection === "newest" ? "oldest" : "newest",
-                      );
-                    }}
-                  >
-                    {sortDirection === "newest" ? (
-                      <IconSortDescending size={16} />
-                    ) : (
-                      <IconSortAscending size={16} />
-                    )}
-                  </ActionIcon>
-                </Tooltip>
-              </Group>
-            </Group>
+                radius="xl"
+                onClick={() => {
+                  setSortColumn(null);
+                  setPage(1);
+                  setSortDirection(
+                    sortDirection === "newest" ? "oldest" : "newest",
+                  );
+                }}
+              >
+                {sortDirection === "newest" ? (
+                  <IconSortDescending size={16} />
+                ) : (
+                  <IconSortAscending size={16} />
+                )}
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+        </Group>
 
-            {loading ? (
-              <Flex justify="center" py="xl">
-                <Loader />
-              </Flex>
-            ) : filteredRequests.length === 0 ? (
-              <Text ta="center" py="xl" c="dimmed">
-                {search.trim()
-                  ? "No leave requests match your search"
-                  : "No leave requests found"}
-              </Text>
-            ) : (
-              <>
+        {loading ? (
+          <Flex justify="center" py="xl">
+            <Loader />
+          </Flex>
+        ) : filteredRequests.length === 0 ? (
+          <Text ta="center" py="xl" c="dimmed">
+            {search.trim()
+              ? "No leave requests match your search"
+              : "No leave requests found"}
+          </Text>
+        ) : (
+          <>
               <Box visibleFrom="sm">
               <Table.ScrollContainer minWidth={600}>
                 <Table verticalSpacing="sm" highlightOnHover>
@@ -698,9 +689,7 @@ export default function TeamLeaveRequestsPage() {
               </Stack>
               </>
             )}
-          </Paper>
-        </Box>
-      </Flex>
+      </Paper>
     </Stack>
   );
 }
