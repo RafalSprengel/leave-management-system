@@ -11,6 +11,7 @@ import {
     Loader,
     Modal,
     NumberInput,
+    Pagination,
     Select,
     Stack,
     Text,
@@ -53,6 +54,8 @@ const TYPE_COLORS: Record<AbsenceType, string> = {
     other: "gray",
 };
 
+const PAGE_SIZE = 10;
+
 type FormValues = {
     employee: string | null;
     dateRange: [Date | null, Date | null];
@@ -67,6 +70,7 @@ export default function AbsencesPage() {
     const [isPending, startTransition] = useTransition();
     const [search, setSearch] = useState("");
     const [typeFilter, setTypeFilter] = useState<string | null>(null);
+    const [page, setPage] = useState(1);
 
     const { employees, loading: employeesLoading } = useEmployees();
     const { bankHolidaysMap, closuresMap } = useNonWorkingDays();
@@ -146,6 +150,21 @@ export default function AbsencesPage() {
         }
         return result;
     }, [absences, typeFilter, search]);
+
+    const totalPages = Math.max(
+        1,
+        Math.ceil(filteredAbsences.length / PAGE_SIZE)
+    );
+    const activePage = Math.min(page, totalPages);
+    const visibleAbsences = filteredAbsences.slice(
+        (activePage - 1) * PAGE_SIZE,
+        activePage * PAGE_SIZE
+    );
+    const firstVisible = (activePage - 1) * PAGE_SIZE + 1;
+    const lastVisible = Math.min(
+        activePage * PAGE_SIZE,
+        filteredAbsences.length
+    );
 
     const handleSubmit = (values: FormValues) => {
         if (!values.employee || !values.dateRange[0] || !values.dateRange[1])
@@ -227,7 +246,10 @@ export default function AbsencesPage() {
                             placeholder="Search employee or department…"
                             leftSection={<IconSearch size={14} />}
                             value={search}
-                            onChange={(e) => setSearch(e.currentTarget.value)}
+                            onChange={(e) => {
+                                setSearch(e.currentTarget.value);
+                                setPage(1);
+                            }}
                             style={{ minWidth: 220 }}
                         />
                         <Select
@@ -239,7 +261,10 @@ export default function AbsencesPage() {
                                 label,
                             }))}
                             value={typeFilter}
-                            onChange={setTypeFilter}
+                            onChange={(value) => {
+                                setTypeFilter(value);
+                                setPage(1);
+                            }}
                             style={{ minWidth: 150 }}
                         />
                         <Button
@@ -267,7 +292,7 @@ export default function AbsencesPage() {
                     </Stack>
                 ) : (
                     <Stack gap="xs">
-                        {filteredAbsences.map((a) => (
+                        {visibleAbsences.map((a) => (
                             <Card
                                 key={a.id}
                                 p="sm"
@@ -336,6 +361,20 @@ export default function AbsencesPage() {
                                 </Group>
                             </Card>
                         ))}
+                        <Stack gap={8} align="center" mt="sm">
+                            <Pagination
+                                total={totalPages}
+                                value={activePage}
+                                onChange={setPage}
+                                size="sm"
+                                withEdges
+                                hideWithOnePage
+                            />
+                            <Text size="xs" c="dimmed">
+                                {firstVisible}–{lastVisible} of{" "}
+                                {filteredAbsences.length}
+                            </Text>
+                        </Stack>
                     </Stack>
                 )}
             </Stack>

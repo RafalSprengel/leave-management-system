@@ -10,6 +10,7 @@ import {
   Group,
   Loader,
   Menu,
+  Pagination,
   Paper,
   SegmentedControl,
   Stack,
@@ -25,6 +26,7 @@ import {
   IconCheck,
   IconChevronRight,
   IconDotsVertical,
+  IconSearch,
   IconSortAscending,
   IconSortDescending,
   IconTrash,
@@ -51,6 +53,8 @@ dayjs.extend(relativeTime);
 
 type SortColumn = "employee" | "type" | "dates" | "days" | "status";
 
+const PAGE_SIZE = 10;
+
 const typeLabels: Record<string, string> = Object.fromEntries(
   LEAVE_REQUEST_TYPES.map((t) => [t, getLeaveTypeLabel(t)]),
 );
@@ -67,12 +71,15 @@ export default function TeamLeaveRequestsPage() {
   const { requests, loading, refetch } = useTeamLeaveRequests();
 
   const [statusFilter, setStatusFilter] = useState<string>("Pending");
+  const [search, setSearch] = useState("");
   const [sortDirection, setSortDirection] = useState<"newest" | "oldest">("newest");
   const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
   const [columnDirection, setColumnDirection] = useState<SortDirection>("asc");
+  const [page, setPage] = useState(1);
   const rejectReasonRef = useRef("");
 
   function handleSort(column: SortColumn) {
+    setPage(1);
     if (sortColumn === column) {
       setColumnDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
@@ -82,9 +89,20 @@ export default function TeamLeaveRequestsPage() {
   }
 
   const filteredRequests = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
     const base = requests.filter((req) => {
-      if (statusFilter === "All") return true;
-      return req.status === statusFilter.toLowerCase();
+      if (statusFilter !== "All" && req.status !== statusFilter.toLowerCase()) {
+        return false;
+      }
+
+      if (!query) return true;
+
+      return (
+        (req.employeeName ?? "").toLowerCase().includes(query) ||
+        (req.departmentName ?? "").toLowerCase().includes(query) ||
+        (typeLabels[req.type] ?? req.type).toLowerCase().includes(query)
+      );
     });
 
     if (sortColumn) {
@@ -113,7 +131,26 @@ export default function TeamLeaveRequestsPage() {
         dayjs(b.createdAt).valueOf() - dayjs(a.createdAt).valueOf();
       return sortDirection === "newest" ? delta : -delta;
     });
-  }, [requests, statusFilter, sortDirection, sortColumn, columnDirection]);
+  }, [
+    requests,
+    statusFilter,
+    search,
+    sortDirection,
+    sortColumn,
+    columnDirection,
+  ]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredRequests.length / PAGE_SIZE),
+  );
+  const activePage = Math.min(page, totalPages);
+  const visibleRequests = filteredRequests.slice(
+    (activePage - 1) * PAGE_SIZE,
+    activePage * PAGE_SIZE,
+  );
+  const firstVisible = (activePage - 1) * PAGE_SIZE + 1;
+  const lastVisible = Math.min(activePage * PAGE_SIZE, filteredRequests.length);
 
   const pendingCount = requests.filter((r) => r.status === "pending").length;
 
@@ -268,7 +305,10 @@ export default function TeamLeaveRequestsPage() {
             <Group mb="lg" justify="space-between">
               <SegmentedControl
                 value={statusFilter}
-                onChange={setStatusFilter}
+                onChange={(value) => {
+                  setStatusFilter(value);
+                  setPage(1);
+                }}
                 size="xs"
                 data={[
                   { label: `Pending (${pendingCount})`, value: "Pending" },
@@ -279,31 +319,45 @@ export default function TeamLeaveRequestsPage() {
                 radius="xl"
                 color="blue"
               />
-              <Tooltip
-                label={
-                  sortDirection === "newest"
-                    ? "Newest first — click for oldest first"
-                    : "Oldest first — click for newest first"
-                }
-              >
-                <ActionIcon
-                  variant={sortDirection === "newest" ? "light" : "subtle"}
-                  color="blue"
-                  radius="xl"
-                  onClick={() => {
-                    setSortColumn(null);
-                    setSortDirection(
-                      sortDirection === "newest" ? "oldest" : "newest",
-                    );
+              <Group gap="xs" wrap="nowrap">
+                <TextInput
+                  size="xs"
+                  placeholder="Search employee, department or type…"
+                  leftSection={<IconSearch size={14} />}
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.currentTarget.value);
+                    setPage(1);
                   }}
+                  style={{ minWidth: 240 }}
+                />
+                <Tooltip
+                  label={
+                    sortDirection === "newest"
+                      ? "Newest first — click for oldest first"
+                      : "Oldest first — click for newest first"
+                  }
                 >
-                  {sortDirection === "newest" ? (
-                    <IconSortDescending size={16} />
-                  ) : (
-                    <IconSortAscending size={16} />
-                  )}
-                </ActionIcon>
-              </Tooltip>
+                  <ActionIcon
+                    variant={sortDirection === "newest" ? "light" : "subtle"}
+                    color="blue"
+                    radius="xl"
+                    onClick={() => {
+                      setSortColumn(null);
+                      setPage(1);
+                      setSortDirection(
+                        sortDirection === "newest" ? "oldest" : "newest",
+                      );
+                    }}
+                  >
+                    {sortDirection === "newest" ? (
+                      <IconSortDescending size={16} />
+                    ) : (
+                      <IconSortAscending size={16} />
+                    )}
+                  </ActionIcon>
+                </Tooltip>
+              </Group>
             </Group>
 
             {loading ? (
@@ -312,7 +366,9 @@ export default function TeamLeaveRequestsPage() {
               </Flex>
             ) : filteredRequests.length === 0 ? (
               <Text ta="center" py="xl" c="dimmed">
-                No leave requests found
+                {search.trim()
+                  ? "No leave requests match your search"
+                  : "No leave requests found"}
               </Text>
             ) : (
               <>
@@ -340,7 +396,7 @@ export default function TeamLeaveRequestsPage() {
                     </Table.Tr>
                   </Table.Thead>
                   <Table.Tbody>
-                    {filteredRequests.map((req) => (
+                    {visibleRequests.map((req) => (
                       <Table.Tr
                         key={req._id}
                         onClick={() =>
@@ -482,7 +538,7 @@ export default function TeamLeaveRequestsPage() {
               </Box>
 
               <Stack gap="md" hiddenFrom="sm">
-                {filteredRequests.map((req) => (
+                {visibleRequests.map((req) => (
                   <Paper
                     key={req._id}
                     p="sm"
@@ -625,6 +681,20 @@ export default function TeamLeaveRequestsPage() {
                     </Group>
                   </Paper>
                 ))}
+              </Stack>
+
+              <Stack gap={8} align="center">
+                <Pagination
+                  total={totalPages}
+                  value={activePage}
+                  onChange={setPage}
+                  size="sm"
+                  withEdges
+                  hideWithOnePage
+                />
+                <Text size="xs" c="dimmed">
+                  {firstVisible}–{lastVisible} of {filteredRequests.length}
+                </Text>
               </Stack>
               </>
             )}

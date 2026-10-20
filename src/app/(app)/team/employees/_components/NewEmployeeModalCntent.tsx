@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "@mantine/form";
-import { Stack, Button, TextInput, Select, NumberInput, Group, Flex, Text, Card, SimpleGrid } from "@mantine/core";
+import { Stack, Button, TextInput, Select, NumberInput, Group, Flex, Text, Table } from "@mantine/core";
 import { DatePickerInput } from "@mantine/dates";
 import { modals } from "@mantine/modals";
 import { createEmployee } from "@/actions/admin/employees/createEmployee";
@@ -228,25 +228,29 @@ export default function NewEmployeeModalContent() {
                 <Text size="sm" fw={600}>
                     Allowance:
                 </Text>
-                <SimpleGrid
-                    cols={{ base: 1, sm: 2, md: 3 }}
-                    spacing="md"
-                    mt="xs"
-                >
-                    {LEAVE_ALLOWANCE_TYPES.map((type) => (
-                        <Card key={type} withBorder radius="md" padding="sm">
-                            <Text size="sm" fw={600} mb="xs">
-                                {getLeaveAllowanceLabel(type)}
-                            </Text>
-                            <NumberInput
-                                placeholder="0"
-                                min={0}
-                                disabled={isFormDisabled}
-                                {...form.getInputProps(`allowances.${type}`)}
-                            />
-                        </Card>
-                    ))}
-                </SimpleGrid>
+                <Table withTableBorder withColumnBorders>
+                    <Table.Thead>
+                        <Table.Tr>
+                            <Table.Th>Leave type</Table.Th>
+                            <Table.Th w={140}>Days</Table.Th>
+                        </Table.Tr>
+                    </Table.Thead>
+                    <Table.Tbody>
+                        {LEAVE_ALLOWANCE_TYPES.map((type) => (
+                            <Table.Tr key={type}>
+                                <Table.Td>{getLeaveAllowanceLabel(type)}</Table.Td>
+                                <Table.Td>
+                                    <NumberInput
+                                        placeholder="0"
+                                        min={0}
+                                        disabled={isFormDisabled}
+                                        {...form.getInputProps(`allowances.${type}`)}
+                                    />
+                                </Table.Td>
+                            </Table.Tr>
+                        ))}
+                    </Table.Tbody>
+                </Table>
             </Stack>
 
             <Group grow mt="md">

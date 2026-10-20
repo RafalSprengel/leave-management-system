@@ -271,22 +271,20 @@ export function EmployeeStatsCharts({
             <Title order={4}>Sick Leave by Weekday</Title>
           </Group>
           <Text size="xs" c="dimmed">
-            Average sick days per weekday over the last 12 months.
+            Sick days per weekday over the last 12 months.
           </Text>
           {hasWeekdayData ? (
             <LineChart
               h={300}
               data={sickByWeekday}
               dataKey="day"
-              series={[
-                { name: "average", label: "Avg sick days", color: "red.6" },
-              ]}
+              series={[{ name: "days", label: "Sick days", color: "red.6" }]}
               tickLine="y"
               gridAxis="x"
               withTooltip
               withDots
-              valueFormatter={(value) => value.toFixed(1)}
-              yAxisLabel="Avg days"
+              yAxisProps={{ allowDecimals: false }}
+              yAxisLabel="Days"
             />
           ) : (
             <Text size="sm" c="dimmed">

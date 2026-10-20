@@ -634,7 +634,7 @@ export default function ReportsPage() {
             <Title order={4}>Sick Leave by Weekday</Title>
           </Group>
           <Text size="xs" c="dimmed" mb="md">
-            Average sick days per weekday over the last 12 months.
+            Sick days per weekday over the last 12 months.
           </Text>
           {!hasSickWeekdayData ? (
             <Text size="sm" c="dimmed">
@@ -645,9 +645,7 @@ export default function ReportsPage() {
               h={250}
               data={sickByWeekday}
               dataKey="day"
-              series={[
-                { name: "average", label: "Avg sick days", color: "red.6" },
-              ]}
+              series={[{ name: "days", label: "Sick days", color: "red.6" }]}
               curveType="monotone"
               withGradient
               fillOpacity={0.15}
@@ -659,8 +657,8 @@ export default function ReportsPage() {
               gridColor="gray.2"
               strokeDasharray="3 3"
               withTooltip
-              valueFormatter={(value) => value.toFixed(1)}
-              yAxisLabel="Avg days"
+              yAxisProps={{ allowDecimals: false }}
+              yAxisLabel="Days"
             />
           )}
         </Paper>

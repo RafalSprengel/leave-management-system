@@ -1,7 +1,7 @@
 'use client'
 
 
-import { ActionIcon, Badge, Button, Card, Group, Menu, Paper, SegmentedControl, Select, Stack, Table, Text, Title, useMatches } from "@mantine/core";
+import { ActionIcon, Badge, Button, Card, Group, Menu, Pagination, Paper, SegmentedControl, Select, Stack, Table, Text, TextInput, Title, useMatches } from "@mantine/core";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconClock, IconDotsVertical, IconEdit, IconKey, IconPlus, IconSearch, IconSend, IconUserCheck, IconUserOff, IconX } from "@tabler/icons-react";
@@ -43,6 +43,8 @@ function InvitationStatusBadge({ status }: { status: IEmployee["status"] }) {
 }
 
 type SortColumn = "name" | "email" | "department" | "role" | "status" | "tenure";
+
+const PAGE_SIZE = 10;
 
 function getTenureDays(employmentDate: string): number {
     if (!employmentDate) return 0;
@@ -274,6 +276,8 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
 
     const [filter, setFilter] = useState<"active" | "inactive">("active");
     const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+    const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
     const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
     const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
 
@@ -296,13 +300,24 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
         // Wyszukiwarka ma pierwszeństwo nad zakładką Active/Deactivated,
         // dzięki czemu wybrany pracownik jest zawsze widoczny.
         if (selectedEmployeeId) {
-            return empl._id === selectedEmployeeId;
+            if (empl._id !== selectedEmployeeId) return false;
+        } else if (filter === "active") {
+            if (!(empl.status === "active" || empl.status === "invited")) {
+                return false;
+            }
+        } else if (empl.status !== "inactive") {
+            return false;
         }
-        if (filter === "active") {
-            return empl.status === "active" || empl.status === "invited";
-        } else {
-            return empl.status === "inactive";
-        }
+
+        const query = search.trim().toLowerCase();
+        if (!query) return true;
+
+        return (
+            `${empl.firstName} ${empl.lastName}`.toLowerCase().includes(query) ||
+            empl.email.toLowerCase().includes(query) ||
+            getDepartmentName(empl).toLowerCase().includes(query) ||
+            empl.role.toLowerCase().includes(query)
+        );
     });
 
     function getDepartmentName(empl: IEmployee): string {
@@ -312,6 +327,7 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
     }
 
     function handleSort(column: SortColumn) {
+        setPage(1);
         if (sortColumn === column) {
             setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
         } else {
@@ -342,6 +358,27 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
               sortDirection,
           )
         : filteredEmployees;
+
+    const totalPages = Math.max(
+        1,
+        Math.ceil(sortedEmployees.length / PAGE_SIZE)
+    );
+    const activePage = Math.min(page, totalPages);
+    const visibleEmployees = sortedEmployees.slice(
+        (activePage - 1) * PAGE_SIZE,
+        activePage * PAGE_SIZE
+    );
+    const firstVisible = (activePage - 1) * PAGE_SIZE + 1;
+    const lastVisible = Math.min(
+        activePage * PAGE_SIZE,
+        sortedEmployees.length
+    );
+
+    const emptyMessage = search.trim()
+        ? "No employees match your search."
+        : filter === "active"
+          ? "No active employees."
+          : "No deactivated employees.";
 
     function openNewEmployeeModal() {
         modals.open({
@@ -416,14 +453,13 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
         });
     }
 
-    const rows = sortedEmployees.map((empl) => (
+    const rows = visibleEmployees.map((empl) => (
         <Table.Tr
             key={empl.email}
             onClick={() => router.push(`/team/employees/${empl._id}/profile`)}
             style={{ cursor: "pointer" }}
         >
             <Table.Td fw={600}>{empl.firstName} {empl.lastName}</Table.Td>
-            <Table.Td>{empl.email}</Table.Td>
             <Table.Td>{typeof empl.department === 'object' ? empl.department?.name ?? "-" : empl.department ?? "-"}</Table.Td>
             <Table.Td>{empl.role}</Table.Td>
             <Table.Td>{getTenureLabel(empl.employmentDate)}</Table.Td>
@@ -438,7 +474,7 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
         </Table.Tr>
     ))
 
-    const mobileCards = sortedEmployees.map((empl) => (
+    const mobileCards = visibleEmployees.map((empl) => (
         <Card
             key={empl.email}
             withBorder
@@ -505,7 +541,10 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                     <Title order={2} fw='700'>Employees</Title>
                     <SegmentedControl
                         value={filter}
-                        onChange={(value) => setFilter(value as "active" | "inactive")}
+                        onChange={(value) => {
+                            setFilter(value as "active" | "inactive");
+                            setPage(1);
+                        }}
                         data={[
                             { value: "active", label: `Active (${employees.filter(e => e.status === "active" || e.status === "invited").length})` },
                             { value: "inactive", label: `Deactivated (${employees.filter(e => e.status === "inactive").length})` },
@@ -514,6 +553,16 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                     />
                 </div>
                 <Group gap="sm" wrap="wrap" align="center">
+                    <TextInput
+                        placeholder="Search name, email, department…"
+                        leftSection={<IconSearch size={16} />}
+                        value={search}
+                        onChange={(e) => {
+                            setSearch(e.currentTarget.value);
+                            setPage(1);
+                        }}
+                        w={{ base: "100%", sm: 260 }}
+                    />
                     <Select
                         placeholder="Search employee"
                         data={employeeOptions}
@@ -522,7 +571,10 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                         nothingFoundMessage="No employees found"
                         leftSection={<IconSearch size={16} />}
                         value={selectedEmployeeId}
-                        onChange={setSelectedEmployeeId}
+                        onChange={(value) => {
+                            setSelectedEmployeeId(value);
+                            setPage(1);
+                        }}
                         w={{ base: "100%", sm: 300 }}
                         renderOption={({ option }) => {
                             const emp = employeeOptions.find((e) => e.value === option.value);
@@ -549,7 +601,7 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                     ) : (
                         <Paper withBorder p="md" radius="md">
                             <Text size="sm" c="dimmed" ta="center">
-                                {filter === "active" ? "No active employees." : "No deactivated employees."}
+                                {emptyMessage}
                             </Text>
                         </Paper>
                     )}
@@ -560,7 +612,6 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                         <Table.Thead>
                             <Table.Tr>
                                 <SortableTh column="name" label="Name" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
-                                <SortableTh column="email" label="Email" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                                 <SortableTh column="department" label="Department" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                                 <SortableTh column="role" label="Role" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
                                 <SortableTh column="tenure" label="Tenure" sortColumn={sortColumn} sortDirection={sortDirection} onSort={handleSort} />
@@ -573,12 +624,28 @@ export default function EmployeeTable({ employees }: { employees: IEmployee[] })
                                 rows
                             ) : (
                                 <Table.Tr>
-                                    <Table.Td colSpan={7}>{filter === "active" ? "No active employees." : "No deactivated employees."}</Table.Td>
+                                    <Table.Td colSpan={6}>{emptyMessage}</Table.Td>
                                 </Table.Tr>
                             )}
                         </Table.Tbody>
                     </Table>
                 </Paper>
+            )}
+
+            {filteredEmployees.length > 0 && (
+                <Stack gap={8} align="center">
+                    <Pagination
+                        total={totalPages}
+                        value={activePage}
+                        onChange={setPage}
+                        size="sm"
+                        withEdges
+                        hideWithOnePage
+                    />
+                    <Text size="xs" c="dimmed">
+                        {firstVisible}–{lastVisible} of {filteredEmployees.length}
+                    </Text>
+                </Stack>
             )}
         </Stack>
     )

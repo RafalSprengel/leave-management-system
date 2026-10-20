@@ -7,16 +7,19 @@ import {
     Button,
     Divider,
     Group,
+    Pagination,
     Paper,
     Select,
     Stack,
     Table,
     Text,
+    TextInput,
     Title,
     Tooltip,
 } from "@mantine/core";
 import {
     IconPlus,
+    IconSearch,
     IconSortAscending,
     IconSortDescending,
 } from "@tabler/icons-react";
@@ -36,15 +39,20 @@ const typeLabels: Record<string, string> = Object.fromEntries(
 
 type SortColumn = "type" | "dates" | "days" | "status" | "comment";
 
+const PAGE_SIZE = 10;
+
 export default function EmployeeLeaveRequestsPage() {
     const router = useRouter();
     const { requests } = useMyLeaveRequests();
     const [statusFilter, setStatusFilter] = useState<string>("All");
+    const [search, setSearch] = useState("");
+    const [page, setPage] = useState(1);
     const [sortDirection, setSortDirection] = useState<"newest" | "oldest">("newest");
     const [sortColumn, setSortColumn] = useState<SortColumn | null>(null);
     const [columnDirection, setColumnDirection] = useState<SortDirection>("asc");
 
     function handleSort(column: SortColumn) {
+        setPage(1);
         if (sortColumn === column) {
             setColumnDirection((prev) => (prev === "asc" ? "desc" : "asc"));
         } else {
@@ -68,10 +76,20 @@ export default function EmployeeLeaveRequestsPage() {
         }
     };
 
-    const filteredRequests =
-        statusFilter === "All"
-            ? requests
-            : requests.filter((r) => r.status === statusFilter.toLowerCase());
+    const filteredRequests = requests.filter((r) => {
+        if (statusFilter !== "All" && r.status !== statusFilter.toLowerCase()) {
+            return false;
+        }
+
+        const query = search.trim().toLowerCase();
+        if (!query) return true;
+
+        return (
+            (typeLabels[r.type] ?? r.type).toLowerCase().includes(query) ||
+            r.status.toLowerCase().includes(query) ||
+            (r.comment ?? "").toLowerCase().includes(query)
+        );
+    });
 
     const displayRequests = sortColumn
         ? sortItems(
@@ -102,8 +120,21 @@ export default function EmployeeLeaveRequestsPage() {
     const isPast = (item: { endDate: string }) =>
         dayjs(item.endDate).startOf("day").isBefore(today);
 
-    const currentRequests = displayRequests.filter((r) => !isPast(r));
-    const pastRequests = displayRequests.filter((r) => isPast(r));
+    const totalPages = Math.max(1, Math.ceil(displayRequests.length / PAGE_SIZE));
+    const activePage = Math.min(page, totalPages);
+    const visibleRequests = displayRequests.slice(
+        (activePage - 1) * PAGE_SIZE,
+        activePage * PAGE_SIZE,
+    );
+    const firstVisible = (activePage - 1) * PAGE_SIZE + 1;
+    const lastVisible = Math.min(activePage * PAGE_SIZE, displayRequests.length);
+
+    const currentRequests = visibleRequests.filter((r) => !isPast(r));
+    const pastRequests = visibleRequests.filter((r) => isPast(r));
+
+    const emptyMessage = search.trim()
+        ? "No requests match your search."
+        : "No leave requests found.";
 
     return (
         <Stack gap="lg">
@@ -123,10 +154,23 @@ export default function EmployeeLeaveRequestsPage() {
             >
                 <Group justify="space-between" mb="md">
                     <Title order={4}>Request History</Title>
-                    <Group gap="xs">
+                    <Group gap="xs" wrap="wrap">
+                        <TextInput
+                            placeholder="Search requests…"
+                            leftSection={<IconSearch size={16} />}
+                            value={search}
+                            onChange={(e) => {
+                                setSearch(e.currentTarget.value);
+                                setPage(1);
+                            }}
+                            w={220}
+                        />
                         <Select
                             value={statusFilter}
-                            onChange={(val) => setStatusFilter(val ?? "All")}
+                            onChange={(val) => {
+                                setStatusFilter(val ?? "All");
+                                setPage(1);
+                            }}
                             data={["All", "Pending", "Approved", "Rejected", "Cancelled"]}
                             w={160}
                         />
@@ -145,6 +189,7 @@ export default function EmployeeLeaveRequestsPage() {
                                 radius="xl"
                                 onClick={() => {
                                     setSortColumn(null);
+                                    setPage(1);
                                     setSortDirection(
                                         sortDirection === "newest" ? "oldest" : "newest",
                                     );
@@ -226,7 +271,7 @@ export default function EmployeeLeaveRequestsPage() {
                                 <Table.Tr>
                                     <Table.Td colSpan={5}>
                                         <Text size="sm" c="dimmed" ta="center">
-                                            No leave requests found.
+                                            {emptyMessage}
                                         </Text>
                                     </Table.Td>
                                 </Table.Tr>
@@ -238,7 +283,7 @@ export default function EmployeeLeaveRequestsPage() {
                 <Stack gap="md" hiddenFrom="sm">
                     {currentRequests.length === 0 && pastRequests.length === 0 && (
                         <Text size="sm" c="dimmed" ta="center">
-                            No leave requests found.
+                            {emptyMessage}
                         </Text>
                     )}
                     {currentRequests.map((item) => (
@@ -329,6 +374,22 @@ export default function EmployeeLeaveRequestsPage() {
                         </>
                     )}
                 </Stack>
+
+                {displayRequests.length > 0 && (
+                    <Stack gap={8} align="center" mt="md">
+                        <Pagination
+                            total={totalPages}
+                            value={activePage}
+                            onChange={setPage}
+                            size="sm"
+                            withEdges
+                            hideWithOnePage
+                        />
+                        <Text size="xs" c="dimmed">
+                            {firstVisible}–{lastVisible} of {displayRequests.length}
+                        </Text>
+                    </Stack>
+                )}
             </Paper>
         </Stack>
     );
