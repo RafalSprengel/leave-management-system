@@ -39,14 +39,14 @@ const DEFAULT_POLICY_OPTIONS: PolicyOptions = {
 };
 
 const ALLOWANCE_LABELS: Record<LeaveAllowanceType, string> = {
-  annual: "Annual leave",
+  holiday: "Holiday",
   unpaid: "Unpaid leave",
   sick: "Sick leave",
   bereavement: "Bereavement",
 };
 
 const ALLOWANCE_DESCRIPTIONS: Record<LeaveAllowanceType, string> = {
-  annual: "Base allowance given to full-time employees annually",
+  holiday: "Base allowance given to full-time employees annually",
   unpaid: "Default days pre-filled when adding a new employee",
   sick: "Default days pre-filled when adding a new employee",
   bereavement: "Default days pre-filled when adding a new employee",
@@ -61,7 +61,7 @@ function toAllowanceRows(settings: IOrgSettings): DefaultAllowanceRow[] {
     description: ALLOWANCE_DESCRIPTIONS[type],
     days:
       stored[type] ??
-      (type === "annual"
+      (type === "holiday"
         ? settings.defaultAnnualLeaveDays
         : DEFAULT_LEAVE_ALLOWANCE_DAYS[type]),
   }));

@@ -29,7 +29,7 @@ export type WithChargedDays<T> = T & {
  * - `chargedDays` - dni odliczane od puli urlopu (daysRequested minus dni pokryte absencja),
  * - `absenceDays` - dni robocze wniosku pokryte absencja.
  * Wnioski sa przekazywane po JSON.parse, wiec `employee` jest stringiem.
- * Tylko wnioski typu "annual" sa korygowane o absencje.
+ * Tylko wnioski typu "holiday" sa korygowane o absencje.
  */
 export async function addChargedDays<T extends EnrichableRequest>(
     requests: T[],

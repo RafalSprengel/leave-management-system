@@ -1,6 +1,7 @@
 "use client";
 
 import { createLeaveRequest } from "@/actions/admin/leave/createLeaveRequest";
+import { getEmployeeLeaveRequests } from "@/actions/manager/leave/getEmployeeLeaveRequests";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useNonWorkingDays } from "@/hooks/useNonWorkingDays";
 import {
@@ -20,12 +21,13 @@ import {
 import { DatePickerInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { notifications } from "@mantine/notifications";
-import { IconAlertTriangle, IconCalendar, IconX } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCalendar } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { countWorkingDays } from "@/utils/workingDays";
 import { formatDateList } from "@/utils/formatDateList";
+import { findBookedWorkingDaysInRange, findNonWorkingInRange } from "@/utils/dateRangeRules";
 import {
   LEAVE_REQUEST_TYPES,
   getLeaveTypeLabel,
@@ -43,7 +45,7 @@ export default function NewLeaveRequestAsAdminPage() {
     initialValues: {
       employee: "",
       dateRange: [null, null] as [Date | null, Date | null],
-      type: "annual" as LeaveRequestType,
+      type: "holiday" as LeaveRequestType,
       startHalfDay: false,
       endHalfDay: false,
       completedDate: new Date(),
@@ -61,7 +63,6 @@ export default function NewLeaveRequestAsAdminPage() {
 
   const [startDate, endDate] = form.values.dateRange;
 
-  // Dni nierobocze (bank holidays + company closures) -> jeden Set dla wspolnego helpera
   const nonWorkingDates = useMemo(() => {
     const set = new Set<string>();
     bankHolidaysMap.forEach((_, date) => {
@@ -73,26 +74,61 @@ export default function NewLeaveRequestAsAdminPage() {
     return set;
   }, [bankHolidaysMap, closuresMap]);
 
-  const nonWorkingInRange = useMemo(() => {
-    const dates: string[] = [];
-    if (!startDate || !endDate) return dates;
+  const selectedEmployeeId = form.values.employee;
+  const [employeeBookedDates, setEmployeeBookedDates] = useState<Set<string>>(new Set());
 
-    let cur = dayjs(startDate);
-    const last = dayjs(endDate);
-    while (!cur.isAfter(last, "day")) {
-      const key = cur.format("YYYY-MM-DD");
-      if (nonWorkingDates.has(key)) dates.push(key);
-      cur = cur.add(1, "day");
+  useEffect(() => {
+    if (!selectedEmployeeId) {
+      setEmployeeBookedDates(new Set());
+      return;
     }
-    return dates;
-  }, [startDate, endDate, nonWorkingDates]);
+    (async () => {
+      const res = await getEmployeeLeaveRequests(selectedEmployeeId);
+      const booked = new Set<string>();
+      if (res.success) {
+        res.data
+          .filter((r) => r.status === "approved")
+          .forEach((r) => {
+            let cur = dayjs(r.startDate);
+            const last = dayjs(r.endDate);
+            while (!cur.isAfter(last, "day")) {
+              booked.add(cur.format("YYYY-MM-DD"));
+              cur = cur.add(1, "day");
+            }
+          });
+      }
+      setEmployeeBookedDates(booked);
+    })();
+  }, [selectedEmployeeId]);
 
-  const nonWorkingError =
-    nonWorkingInRange.length > 0
+  const nonWorkingError = useMemo(() => {
+    if (!startDate || !endDate) return null;
+    const blocked = findNonWorkingInRange(
+      dayjs(startDate).format("YYYY-MM-DD"),
+      dayjs(endDate).format("YYYY-MM-DD"),
+      nonWorkingDates
+    );
+    return blocked.length > 0
       ? `Selected range includes non-working days (${formatDateList(
-          nonWorkingInRange
+          blocked
         )}). Please choose a range without bank holidays or company closures.`
       : null;
+  }, [startDate, endDate, nonWorkingDates]);
+
+  const bookedError = useMemo(() => {
+    if (!startDate || !endDate) return null;
+    const booked = findBookedWorkingDaysInRange(
+      dayjs(startDate).format("YYYY-MM-DD"),
+      dayjs(endDate).format("YYYY-MM-DD"),
+      employeeBookedDates,
+      nonWorkingDates
+    );
+    return booked.length > 0
+      ? `Selected range overlaps with this employee's approved leave (${formatDateList(booked)}).`
+      : null;
+  }, [startDate, endDate, employeeBookedDates, nonWorkingDates]);
+
+  const rangeError = nonWorkingError ?? bookedError;
 
   const daysRequested =
     startDate && endDate ? countWorkingDays(startDate, endDate, nonWorkingDates) : 0;
@@ -101,8 +137,8 @@ export default function NewLeaveRequestAsAdminPage() {
     const [start, end] = values.dateRange;
     if (!start || !end) return;
 
-    if (nonWorkingError) {
-      form.setFieldError("dateRange", nonWorkingError);
+    if (rangeError) {
+      form.setFieldError("dateRange", rangeError);
       return;
     }
 
@@ -199,6 +235,7 @@ export default function NewLeaveRequestAsAdminPage() {
 
               <DatePickerInput
                 type="range"
+                allowSingleDateInRange
                 label="Holiday Date Range"
                 placeholder="Pick start and end date"
                 leftSection={<IconCalendar size={18} />}
@@ -208,10 +245,49 @@ export default function NewLeaveRequestAsAdminPage() {
                 excludeDate={(date) =>
                   nonWorkingDates.has(dayjs(date).format("YYYY-MM-DD"))
                 }
+                value={form.values.dateRange}
+                error={form.errors.dateRange}
+                onChange={(val) => {
+                  const [from, to] = val;
+                  form.clearFieldError("dateRange");
+                  if (from && to) {
+                    const fromKey = dayjs(from).format("YYYY-MM-DD");
+                    const toKey = dayjs(to).format("YYYY-MM-DD");
+                    const blocked = findNonWorkingInRange(fromKey, toKey, nonWorkingDates);
+                    const booked = findBookedWorkingDaysInRange(
+                      fromKey,
+                      toKey,
+                      employeeBookedDates,
+                      nonWorkingDates
+                    );
+                    if (blocked.length > 0 || booked.length > 0) {
+                      form.setFieldValue("dateRange", [null, null]);
+                      form.setFieldError(
+                        "dateRange",
+                        blocked.length > 0
+                          ? `Range includes non-working days (${formatDateList(blocked)}). Choose a range without bank holidays or company closures.`
+                          : `Range overlaps with this employee's approved leave (${formatDateList(booked)}).`
+                      );
+                      return;
+                    }
+                  }
+                  form.setFieldValue("dateRange", val as [Date | null, Date | null]);
+                }}
                 getDayProps={(date) => {
                   const formattedDate = dayjs(date).format(
                     "YYYY-MM-DD"
                   );
+                  const isBooked = employeeBookedDates.has(formattedDate);
+                  if (isBooked) {
+                    return {
+                      style: {
+                        backgroundColor: "var(--mantine-color-blue-1)",
+                        color: "var(--mantine-color-blue-9)",
+                        fontWeight: "bold",
+                        borderRadius: "8px",
+                      },
+                    };
+                  }
                   const isBankHoliday =
                     bankHolidaysMap.has(formattedDate);
                   const isClosure =
@@ -298,17 +374,16 @@ export default function NewLeaveRequestAsAdminPage() {
                     </Flex>
                   );
                 }}
-                {...form.getInputProps("dateRange")}
               />
 
-              {nonWorkingError && (
+              {rangeError && (
                 <Alert
                   icon={<IconAlertTriangle size={16} />}
                   color="red"
-                  title="Range includes non-working days"
+                  title="Selected range is not allowed"
                   variant="light"
                 >
-                  {nonWorkingError}
+                  {rangeError}
                 </Alert>
               )}
 

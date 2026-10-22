@@ -62,7 +62,7 @@ const LeaveRequestSchema = new Schema<ILeaveRequest>(
     type: {
       type: String,
       enum: [...LEAVE_REQUEST_TYPES],
-      default: "annual",
+      default: "holiday",
     },
     comment: { type: String, trim: true, default: "" },
     rejectionReason: { type: String, trim: true, default: null },

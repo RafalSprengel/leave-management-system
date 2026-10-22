@@ -4,7 +4,7 @@
  */
 
 export const LEAVE_ALLOWANCE_TYPES = [
-    "annual",
+    "holiday",
     "unpaid",
     "sick",
     "bereavement",
@@ -13,7 +13,7 @@ export const LEAVE_ALLOWANCE_TYPES = [
 export type LeaveAllowanceType = (typeof LEAVE_ALLOWANCE_TYPES)[number];
 
 export const LEAVE_ALLOWANCE_LABELS: Record<LeaveAllowanceType, string> = {
-    annual: "Annual allowance",
+    holiday: "Holiday",
     unpaid: "Unpaid leave",
     sick: "Sick",
     bereavement: "Bereavement",
@@ -29,7 +29,7 @@ export function getLeaveAllowanceLabel(type: string): string {
  * "new employee" form and leave-balance fallbacks.
  */
 export const DEFAULT_LEAVE_ALLOWANCE_DAYS: Record<LeaveAllowanceType, number> = {
-    annual: 26,
+    holiday: 26,
     unpaid: 0,
     sick: 90,
     bereavement: 5,

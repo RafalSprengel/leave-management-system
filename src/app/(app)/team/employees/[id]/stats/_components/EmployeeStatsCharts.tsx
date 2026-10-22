@@ -1,10 +1,12 @@
 "use client";
 
 import {
+  Anchor,
   Badge,
   Card,
   Flex,
   Group,
+  Popover,
   Progress,
   SimpleGrid,
   Stack,
@@ -42,8 +44,12 @@ export function EmployeeStatsCharts({
   sickByMonth,
   annual,
   sickThisPeriod,
+  absenceBreakdown,
   employmentDate,
 }: EmployeeLeaveStats & { employmentDate: string }) {
+  const formatDays = (count: number) =>
+    `${count} ${count === 1 ? "day" : "days"}`;
+
   const hasWeekdayData = sickByWeekday.some((item) => item.days > 0);
   const hasMonthData = sickByMonth.some((item) => item.days > 0);
   const hasAnnualData = annual.allowance > 0 || annual.used > 0;
@@ -140,7 +146,7 @@ export function EmployeeStatsCharts({
                 tt="uppercase"
                 style={{ letterSpacing: "0.05em", minWidth: 0 }}
               >
-                Sick this Year
+                Absences
               </Text>
               <ThemeIcon
                 variant="light"
@@ -153,25 +159,82 @@ export function EmployeeStatsCharts({
                 <IconStethoscope size={20} />
               </ThemeIcon>
             </Group>
-            <Stack gap={0}>
-              <Text fw={700} fz={{ base: 18, sm: 28 }} lh={1.15}>
-                {sickThisPeriod}
-              </Text>
-              <Group gap={4} mt="sm" wrap="wrap">
-                <Badge
-                  variant="light"
-                  color="red"
-                  size="sm"
-                  styles={{
-                    label: { fontSize: "clamp(9px, 2.5vw, 12px)" },
+            <Stack gap={0} h="100%" justify="space-between">
+              <Stack gap={4}>
+                <Text fz={{ base: 10, sm: 12 }} c="dimmed" fw={500}>
+                  Sick
+                </Text>
+                <Text fw={700} fz={{ base: 18, sm: 28 }} lh={1.15}>
+                  {sickThisPeriod} {sickThisPeriod === 1 ? "day" : "days"}
+                </Text>
+              </Stack>
+              <Popover
+                position="bottom-start"
+                withArrow
+                shadow="md"
+                radius="md"
+                width={230}
+                withinPortal
+              >
+                <Popover.Target>
+                  <Anchor
+                    component="button"
+                    type="button"
+                    size="xs"
+                    underline="always"
+                    ta="left"
+                    style={{ alignSelf: "flex-start" }}
+                  >
+                    more...
+                  </Anchor>
+                </Popover.Target>
+                <Popover.Dropdown
+                  p="xs"
+                  style={{
+                    borderRadius: 12,
+                    boxShadow: "0 16px 40px rgba(0, 0, 0, 0.18)",
+                    border: "1px solid #e5e7eb",
                   }}
                 >
-                  days
-                </Badge>
-                <Text size="xs" fz={{ base: 10, sm: 12 }} c="dimmed">
-                  current holiday year
-                </Text>
-              </Group>
+                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={6}>
+                    Additional Absences
+                  </Text>
+                  <Stack gap={4}>
+                    <Group justify="space-between" wrap="nowrap">
+                      <Text size="sm" c="dimmed" fw={400}>
+                        Unauthorized
+                      </Text>
+                      <Badge color="gray" variant="light" size="sm">
+                        {formatDays(absenceBreakdown.unauthorised)}
+                      </Badge>
+                    </Group>
+                    <Group justify="space-between" wrap="nowrap">
+                      <Text size="sm" c="dimmed" fw={400}>
+                        Unpaid Leave
+                      </Text>
+                      <Badge color="gray" variant="light" size="sm">
+                        {formatDays(absenceBreakdown.unpaid)}
+                      </Badge>
+                    </Group>
+                    <Group justify="space-between" wrap="nowrap">
+                      <Text size="sm" c="dimmed" fw={400}>
+                        Bereavement
+                      </Text>
+                      <Badge color="gray" variant="light" size="sm">
+                        {formatDays(absenceBreakdown.bereavement)}
+                      </Badge>
+                    </Group>
+                    <Group justify="space-between" wrap="nowrap">
+                      <Text size="sm" c="dimmed" fw={400}>
+                        Other
+                      </Text>
+                      <Badge color="gray" variant="light" size="sm">
+                        {formatDays(absenceBreakdown.other)}
+                      </Badge>
+                    </Group>
+                  </Stack>
+                </Popover.Dropdown>
+              </Popover>
             </Stack>
           </Flex>
         </Card>

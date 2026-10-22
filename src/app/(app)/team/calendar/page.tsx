@@ -338,7 +338,7 @@ export default function TeamCalendarPage() {
             label="Leave Types"
             placeholder="All types"
             data={[
-              { value: "annual", label: "Annual Leave" },
+              { value: "holiday", label: "Holiday" },
               { value: "sick", label: "Sick Leave" },
               { value: "unpaid", label: "Unpaid Leave" },
               { value: "other", label: "Other" },

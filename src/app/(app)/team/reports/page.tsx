@@ -422,7 +422,7 @@ export default function ReportsPage() {
   for (const r of requests) {
     const m = ensureMonth(monthKey(r.startDate));
     if (r.type === "sick") m.sick += r.daysRequested;
-    else if (r.type === "annual") m.annual += r.daysRequested;
+    else if (r.type === "holiday") m.annual += r.daysRequested;
     else if (r.type === "unpaid") m.unpaid += r.daysRequested;
     else m.other += r.daysRequested; // bereavement + inne
   }
@@ -436,7 +436,7 @@ export default function ReportsPage() {
   const monthlyChartData = sortedMonths.map((mk) => ({
     month: monthLabel(mk),
     "Sick Leave": monthlyMap.get(mk)!.sick,
-    "Annual Leave": monthlyMap.get(mk)!.annual,
+    Holiday: monthlyMap.get(mk)!.annual,
     Unpaid: monthlyMap.get(mk)!.unpaid,
     Other: monthlyMap.get(mk)!.other,
   }));
@@ -457,7 +457,7 @@ export default function ReportsPage() {
   // ---- 4. Annual left to take ----
   const annualUsedByEmployee = new Map<string, number>();
   for (const r of requests) {
-    if (r.type !== "annual" || !r.employee) continue;
+    if (r.type !== "holiday" || !r.employee || !r.inBillingPeriod) continue;
     const charged = r.chargedDays ?? r.daysRequested ?? 0;
     annualUsedByEmployee.set(
       r.employee,
@@ -557,7 +557,7 @@ export default function ReportsPage() {
 
       <SimpleGrid cols={2} spacing={{ base: "sm", sm: "lg" }}>
         <MetricCard
-          label="Annual leave used"
+          label="Holiday used"
           value={`${annualTakenPercent}%`}
           badge={`${totalAnnualLeft} days left`}
           description={
@@ -605,7 +605,7 @@ export default function ReportsPage() {
             dataKey="month"
             series={[
               { name: "Sick Leave", color: "red.6" },
-              { name: "Annual Leave", color: "blue.6" },
+              { name: "Holiday", color: "blue.6" },
               { name: "Unpaid", color: "yellow.6" },
               { name: "Other", color: "gray.6" },
             ]}

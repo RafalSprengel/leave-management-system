@@ -20,9 +20,17 @@ export interface AnnualLeaveSummary {
   remaining: number;
 }
 
+export interface AbsenceBreakdown {
+  unauthorised: number;
+  other: number;
+  unpaid: number;
+  bereavement: number;
+}
+
 export interface EmployeeLeaveStats {
   sickByWeekday: SickWeekdayStat[];
   sickByMonth: SickMonthStat[];
   annual: AnnualLeaveSummary;
   sickThisPeriod: number;
+  absenceBreakdown: AbsenceBreakdown;
 }

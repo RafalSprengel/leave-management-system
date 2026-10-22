@@ -63,9 +63,9 @@ export default function NewEmployeeModalContent() {
             const next: Record<string, number> = {};
             for (const type of LEAVE_ALLOWANCE_TYPES) {
                 const fallback =
-                    type === "annual"
+                    type === "holiday"
                         ? (res.data.defaultAnnualLeaveDays ??
-                          DEFAULT_LEAVE_ALLOWANCE_DAYS.annual)
+                          DEFAULT_LEAVE_ALLOWANCE_DAYS.holiday)
                         : DEFAULT_LEAVE_ALLOWANCE_DAYS[type];
                 next[type] = defaults[type] ?? fallback;
             }
@@ -86,10 +86,10 @@ export default function NewEmployeeModalContent() {
                 role: form.values.role as "Employee" | "Manager",
                 department: form.values.department,
                 managerId: form.values.managerId || undefined,
-                holidayAllowance: form.values.allowances.annual,
+                holidayAllowance: form.values.allowances.holiday,
                 allowances: Object.fromEntries(
                     Object.entries(form.values.allowances).filter(
-                        ([type]) => type !== "annual",
+                        ([type]) => type !== "holiday",
                     ),
                 ),
                 employmentDate: form.values.employmentDate as unknown as string,

@@ -4,14 +4,14 @@ import connectDB from "@/db/connection";
 import LeaveRequest from "@/db/models/LeaveRequest";
 import dayjs from "dayjs";
 import { getOrganizationId } from "@/utils/getOrganizationId";
-import { getNonWorkingDays } from "@/utils/nonWorkingDays";
-import { countWorkingDays } from "@/utils/workingDays";
+import { getApprovedOverlap, getHolidayRemaining, countRequestWorkingDays } from "@/utils/leaveRules";
 import { formatDateList } from "@/utils/formatDateList";
 import { revalidatePath } from "next/cache";
 import { CreateLeaveRequestParams } from "@/types/leaveRequest";
 import { getCurrentEmployeeId } from "@/actions/shared/getCurrentEmployeeId";
 import Employee from "@/db/models/Employee";
-import mongoose from "mongoose";
+import OrganizationSettings from "@/db/models/OrganizationSettings";
+import { getBillingPeriod } from "@/utils/billingPeriod";
 
 export async function createLeaveRequest(data: CreateLeaveRequestParams) {
     try {
@@ -38,26 +38,30 @@ export async function createLeaveRequest(data: CreateLeaveRequestParams) {
             return { success: false, error: "Invalid date range selected" };
         }
 
-        const existingConflict = await LeaveRequest.findOne({
-            employee: new mongoose.Types.ObjectId(data.userId),
-            organizationId: orgId,
-            status: { $in: ["pending", "approved"] },
-            startDate: { $lte: end.format("YYYY-MM-DD") },
-            endDate: { $gte: start.format("YYYY-MM-DD") },
-        });
+        const orgSettings = await OrganizationSettings.findOne({ organizationId: orgId })
+            .select("holidayYearStart")
+            .lean();
+        const holidayYearStart = orgSettings?.holidayYearStart ?? "01-01";
+        const startPeriod = getBillingPeriod(holidayYearStart, start);
+        const endPeriod = getBillingPeriod(holidayYearStart, end);
 
-        if (existingConflict) {
+        if (startPeriod.start !== endPeriod.start) {
             return {
                 success: false,
-                error: "Selected dates overlap with an existing leave request for this employee.",
+                error: `Request spans two holiday years (${startPeriod.start} – ${startPeriod.end} and ${endPeriod.start} – ${endPeriod.end}). Please split it into separate requests.`,
             };
         }
 
         const startStr = start.format("YYYY-MM-DD");
         const endStr = end.format("YYYY-MM-DD");
 
-        // Twarda blokada: wniosek nie moze obejmowac bank holiday ani company closure.
-        const nonWorkingDays = await getNonWorkingDays(orgId, startStr, endStr);
+        const { days: daysRequested, nonWorkingDays } = await countRequestWorkingDays(
+            orgId,
+            startStr,
+            endStr,
+            !!data.startHalfDay,
+            !!data.endHalfDay
+        );
 
         if (nonWorkingDays.size > 0) {
             return {
@@ -68,14 +72,26 @@ export async function createLeaveRequest(data: CreateLeaveRequestParams) {
             };
         }
 
-        const workingDays = countWorkingDays(startStr, endStr, nonWorkingDays);
-
-        let daysRequested = workingDays;
-        if (data.startHalfDay) daysRequested -= 0.5;
-        if (data.endHalfDay) daysRequested -= 0.5;
-
         if (daysRequested <= 0) {
             return { success: false, error: "Selected range contains no working days" };
+        }
+
+        const overlap = await getApprovedOverlap(orgId, data.userId, startStr, endStr);
+        if (overlap) {
+            return {
+                success: false,
+                error: `Selected dates overlap with an approved leave request for this employee (${overlap.startDate} – ${overlap.endDate}).`,
+            };
+        }
+
+        if ((data.type ?? "holiday") === "holiday") {
+            const { remaining } = await getHolidayRemaining(orgId, data.userId, startStr);
+            if (daysRequested > remaining) {
+                return {
+                    success: false,
+                    error: `Not enough holiday days: requested ${daysRequested}, remaining ${remaining} in the current holiday year.`,
+                };
+            }
         }
 
         const adminId = await getCurrentEmployeeId();
@@ -106,7 +122,7 @@ export async function createLeaveRequest(data: CreateLeaveRequestParams) {
             endDate: end.format("YYYY-MM-DD"),
             startHalfDay: data.startHalfDay || false,
             endHalfDay: data.endHalfDay || false,
-            type: data.type ?? "annual",
+            type: data.type ?? "holiday",
             status: "approved",
             createdBy: adminId,
             reviewedBy: adminId,

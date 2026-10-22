@@ -4,7 +4,7 @@
  */
 
 export const LEAVE_REQUEST_TYPES = [
-    "annual",
+    "holiday",
     "sick",
     "unpaid",
     "bereavement",
@@ -24,8 +24,8 @@ export interface LeaveTypeMeta {
 }
 
 export const LEAVE_TYPE_META: Record<LeaveRequestType, LeaveTypeMeta> = {
-    annual: {
-        label: "Annual allowance",
+    holiday: {
+        label: "Holiday",
         color: "blue",
         consumesAllowance: true,
         unlimited: false,

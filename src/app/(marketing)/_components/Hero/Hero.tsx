@@ -90,7 +90,7 @@ export default function Hero() {
           <div className={styles.content}>
             <div className={styles.statRow}>
               <div className={styles.card}>
-                <div className={styles.cardLabel}>Annual leave</div>
+                <div className={styles.cardLabel}>Holiday</div>
                 <div className={styles.cardValue}>18 days left</div>
               </div>
               <div className={styles.card}>

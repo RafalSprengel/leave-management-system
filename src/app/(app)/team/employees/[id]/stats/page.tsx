@@ -28,6 +28,12 @@ export default async function EmployeeStatsPage({
           sickByMonth: [],
           annual: { allowance: 0, used: 0, remaining: 0 },
           sickThisPeriod: 0,
+          absenceBreakdown: {
+            unauthorised: 0,
+            other: 0,
+            unpaid: 0,
+            bereavement: 0,
+          },
         };
 
   return (

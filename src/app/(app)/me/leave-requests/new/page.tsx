@@ -31,6 +31,7 @@ import { useMyLeaveRequests } from "@/hooks/useMyLeaveRequests";
 import { useNonWorkingDays } from "@/hooks/useNonWorkingDays";
 import { countWorkingDays } from "@/utils/workingDays";
 import { formatDateList } from "@/utils/formatDateList";
+import { findBookedWorkingDaysInRange, findNonWorkingInRange } from "@/utils/dateRangeRules";
 import {
   LEAVE_REQUEST_TYPES,
   LEAVE_TYPE_META,
@@ -50,6 +51,7 @@ export default function NewEmployeeLeaveRequestPage() {
   const [loading, setLoading] = useState(false);
   const [balanceError, setBalanceError] = useState<string | null>(null);
   const [balance, setBalance] = useState<LeaveBalanceItem[]>([]);
+  const [balancePeriod, setBalancePeriod] = useState<{ start: string; end: string } | null>(null);
   const { employee, loading: employeeLoading } = useCurrentEmployee();
   const { requests: myRequests, loading: loadingMyRequests } =
     useMyLeaveRequests();
@@ -67,9 +69,21 @@ export default function NewEmployeeLeaveRequestPage() {
     getMyLeaveBalance().then((result) => {
       if (result.success) {
         setBalance(result.data);
+        setBalancePeriod(result.period);
       }
     });
   }, []);
+
+  const nonWorkingDates = useMemo(() => {
+    const set = new Set<string>();
+    bankHolidaysMap.forEach((_, date) => {
+      set.add(date);
+    });
+    closuresMap.forEach((_, date) => {
+      set.add(date);
+    });
+    return set;
+  }, [bankHolidaysMap, closuresMap]);
 
   const myApprovedDates = useMemo(() => {
     const dates = new Set<string>();
@@ -88,17 +102,13 @@ export default function NewEmployeeLeaveRequestPage() {
 
   const isUnavailable = (date: Date | string) => {
     const key = dayjs(date).format("YYYY-MM-DD");
-    return (
-      myApprovedDates.has(key) ||
-      bankHolidaysMap.has(key) ||
-      closuresMap.has(key)
-    );
+    return nonWorkingDates.has(key);
   };
 
   const form = useForm({
     initialValues: {
       dateRange: [null, null] as [Date | null, Date | null],
-      type: "annual" as LeaveRequestType,
+      type: "holiday" as LeaveRequestType,
       comment: "",
     },
     validate: {
@@ -207,17 +217,6 @@ export default function NewEmployeeLeaveRequestPage() {
     );
   };
 
-  const nonWorkingDates = useMemo(() => {
-    const set = new Set<string>();
-    bankHolidaysMap.forEach((_, date) => {
-      set.add(date);
-    });
-    closuresMap.forEach((_, date) => {
-      set.add(date);
-    });
-    return set;
-  }, [bankHolidaysMap, closuresMap]);
-
   const nonWorkingInRange = useMemo(() => {
     const dates: string[] = [];
     if (!startDate || !endDate) return dates;
@@ -239,24 +238,52 @@ export default function NewEmployeeLeaveRequestPage() {
         )}). Please choose a range without bank holidays or company closures.`
       : null;
 
+  const approvedOverlapInRange = useMemo(() => {
+    if (!startDate || !endDate) return [] as string[];
+    return findBookedWorkingDaysInRange(
+      dayjs(startDate).format("YYYY-MM-DD"),
+      dayjs(endDate).format("YYYY-MM-DD"),
+      myApprovedDates,
+      nonWorkingDates
+    );
+  }, [startDate, endDate, myApprovedDates, nonWorkingDates]);
+
+  const approvedOverlapError =
+    approvedOverlapInRange.length > 0
+      ? `Selected range overlaps with your approved leave (${formatDateList(
+          approvedOverlapInRange
+        )}).`
+      : null;
+
   const daysRequested =
     startDate && endDate ? countWorkingDays(startDate, endDate, nonWorkingDates) : 0;
+
+  const rangeError = nonWorkingError ?? approvedOverlapError;
 
   const selectedTypeBalance = balance.find((b) => b.type === form.values.type);
 
   const handleSubmit = async () => {
     setBalanceError(null);
 
-    if (nonWorkingError) {
-      form.setFieldError("dateRange", nonWorkingError);
+    if (rangeError) {
+      form.setFieldError("dateRange", rangeError);
       return;
     }
 
-    if (selectedTypeBalance && daysRequested > selectedTypeBalance.remaining) {
+    const startsInCurrentPeriod =
+      !!startDateStr && !!balancePeriod && startDateStr >= balancePeriod.start && startDateStr <= balancePeriod.end;
+
+    if (
+      startsInCurrentPeriod &&
+      selectedTypeBalance &&
+      form.values.type === "holiday" &&
+      daysRequested > selectedTypeBalance.remaining
+    ) {
       setBalanceError(
         `You don't have enough ${LEAVE_TYPE_META[form.values.type].label} days to submit this request. ` +
         `Requested: ${daysRequested} day${daysRequested !== 1 ? "s" : ""}, ` +
-        `remaining: ${selectedTypeBalance.remaining} day${selectedTypeBalance.remaining !== 1 ? "s" : ""}.`
+        `remaining: ${selectedTypeBalance.remaining} day${selectedTypeBalance.remaining !== 1 ? "s" : ""}. ` +
+        `Pending requests do not reduce your balance until approved, so the approver may still reject this request if the balance runs out.`
       );
       return;
     }
@@ -339,8 +366,31 @@ export default function NewEmployeeLeaveRequestPage() {
                       type="range"
                       value={form.values.dateRange}
                       onChange={(val) => {
+                        const [from, to] = val;
+                        if (from && to) {
+                          const fromKey = dayjs(from).format("YYYY-MM-DD");
+                          const toKey = dayjs(to).format("YYYY-MM-DD");
+                          const blocked = findNonWorkingInRange(fromKey, toKey, nonWorkingDates);
+                          const booked = findBookedWorkingDaysInRange(
+                            fromKey,
+                            toKey,
+                            myApprovedDates,
+                            nonWorkingDates
+                          );
+                          if (blocked.length > 0 || booked.length > 0) {
+                            form.setFieldValue("dateRange", [null, null]);
+                            form.setFieldError(
+                              "dateRange",
+                              blocked.length > 0
+                                ? `Range includes non-working days (${formatDateList(blocked)}). Choose a range without bank holidays or company closures.`
+                                : `Range overlaps with your approved leave (${formatDateList(booked)}).`
+                            );
+                            return;
+                          }
+                        }
+                        form.clearFieldError("dateRange");
                         form.setFieldValue("dateRange", val as [Date | null, Date | null]);
-                        if (val[0] && val[1]) {
+                        if (from && to) {
                           setOpened(false);
                         }
                       }}
@@ -389,14 +439,14 @@ export default function NewEmployeeLeaveRequestPage() {
                 </Popover.Dropdown>
               </Popover>
 
-              {nonWorkingError && (
+              {rangeError && (
                 <Alert
                   icon={<IconAlertTriangle size={16} />}
                   color="red"
-                  title="Range includes non-working days"
+                  title="Selected range is not allowed"
                   variant="light"
                 >
-                  {nonWorkingError}
+                  {rangeError}
                 </Alert>
               )}
 
@@ -455,6 +505,18 @@ export default function NewEmployeeLeaveRequestPage() {
                   </Flex>
                 </Paper>
               )}
+
+              {form.values.type === "holiday" &&
+                myRequests.some((req) => req.status === "pending" && req.type === "holiday") && (
+                  <Alert
+                    icon={<IconAlertTriangle size={16} />}
+                    color="yellow"
+                    title="Pending holiday requests"
+                    variant="light"
+                  >
+                    You have pending holiday requests. They do not block the calendar and do not reduce your remaining balance until approved. If they are approved later and exceed your balance, the approval will be rejected.
+                  </Alert>
+                )}
 
               {balanceError && (
                 <Alert

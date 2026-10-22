@@ -58,7 +58,7 @@ export async function createEmployee(data: ICreateEmployeeInput): Promise<{ succ
 
         // Persist per-type allowances (annual comes from holidayAllowance).
         const allowanceEntries: [string, number][] = [
-            ["annual", data.holidayAllowance],
+            ["holiday", data.holidayAllowance],
             ...Object.entries(data.allowances ?? {}),
         ];
         const validAllowances = allowanceEntries.filter(

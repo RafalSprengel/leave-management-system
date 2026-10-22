@@ -73,7 +73,7 @@ export default function DefaultAllowancesTable({
       const defaultAllowances = Object.fromEntries(
         nextValues.map((r) => [r.type, r.days]),
       );
-      const annualDays = nextValues.find((r) => r.type === "annual")?.days ?? 0;
+      const annualDays = nextValues.find((r) => r.type === "holiday")?.days ?? 0;
 
       const res = await updateOrgSettings({
         defaultAllowances,

@@ -10,8 +10,17 @@ import {
   Title,
 } from "@mantine/core";
 import { IconUser } from "@tabler/icons-react";
+import dayjs from "dayjs";
 import { useCurrentEmployee } from "@/hooks/useCurrentEmployee";
 import ChangePasswordForm from "./_components/ChangePasswordForm/ChangePasswordForm";
+
+function formatTenure(days: number): string {
+  const years = Math.floor(days / 365);
+  const months = Math.floor((days % 365) / 30);
+  if (years > 0) return `${years}y ${months}m`;
+  if (months > 0) return `${months}m ${days % 30}d`;
+  return `${days}d`;
+}
 
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
@@ -62,6 +71,10 @@ export default function ProfilePage() {
             <InfoItem label="First name" value={employee.firstName} />
             <InfoItem label="Last name" value={employee.lastName} />
             <InfoItem label="Email" value={employee.email} />
+            <InfoItem
+              label="Tenure"
+              value={`${formatTenure(Math.max(dayjs().diff(dayjs(employee.employmentDate), "day"), 0))} (since ${dayjs(employee.employmentDate).format("DD-MM-YYYY")})`}
+            />
           </SimpleGrid>
         </Stack>
       </Card>

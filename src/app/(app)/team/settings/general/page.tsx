@@ -51,21 +51,16 @@ type FormValues = {
   website: string;
   startMonth: string;
   startDay: string;
-  endMonth: string;
-  endDay: string;
 };
 
 function settingsToForm(s: IOrgSettings): FormValues {
   const [startM, startD] = s.holidayYearStart.split("-");
-  const [endM, endD] = s.holidayYearEnd.split("-");
   return {
     companyName: s.companyName,
     address: s.address,
     website: s.website,
     startMonth: String(Number(startM)),
     startDay: String(Number(startD)),
-    endMonth: String(Number(endM)),
-    endDay: String(Number(endD)),
   };
 }
 
@@ -80,15 +75,11 @@ export default function GeneralSettingsPage() {
       website: "",
       startMonth: "1",
       startDay: "1",
-      endMonth: "12",
-      endDay: "31",
     },
     validate: {
       companyName: (v) => (!v.trim() ? "Company name is required" : null),
       startMonth: (v) => (!v ? "Required" : null),
       startDay: (v) => (!v ? "Required" : null),
-      endMonth: (v) => (!v ? "Required" : null),
-      endDay: (v) => (!v ? "Required" : null),
     },
   });
 
@@ -109,10 +100,14 @@ export default function GeneralSettingsPage() {
   }, []);
 
   const startMonth = form.values.startMonth;
-  const endMonth = form.values.endMonth;
+
+  const startDate = dayjs(
+    `2000-${String(Number(startMonth)).padStart(2, "0")}-${String(Number(form.values.startDay)).padStart(2, "0")}`,
+  );
+  const endDate = startDate.subtract(1, "day");
 
   const startLabel = `${MONTH_OPTIONS[Number(startMonth) - 1]?.label ?? ""} ${form.values.startDay}`;
-  const endLabel = `${MONTH_OPTIONS[Number(endMonth) - 1]?.label ?? ""} ${form.values.endDay}`;
+  const endLabel = `${MONTH_OPTIONS[endDate.month()]?.label ?? ""} ${endDate.date()}`;
 
   const handleSubmit = (values: FormValues) => {
     startTransition(async () => {
@@ -121,7 +116,6 @@ export default function GeneralSettingsPage() {
         address: values.address,
         website: values.website,
         holidayYearStart: `${String(Number(values.startMonth)).padStart(2, "0")}-${String(Number(values.startDay)).padStart(2, "0")}`,
-        holidayYearEnd: `${String(Number(values.endMonth)).padStart(2, "0")}-${String(Number(values.endDay)).padStart(2, "0")}`,
       });
 
       if (res.success) {
@@ -192,9 +186,10 @@ export default function GeneralSettingsPage() {
               </Text>
             </Group>
             <Text size="xs" c="dimmed" mb="md">
-              Define the start and end of the annual leave year for your
-              organization. This affects how holiday allowances are calculated
-              and carried over.
+              Define when the annual leave year starts for your organization.
+              The end of the period is calculated automatically (the day before
+              the next start). This affects how holiday allowances are
+              calculated and carried over.
             </Text>
 
             <Alert
@@ -213,7 +208,7 @@ export default function GeneralSettingsPage() {
             <Stack gap="sm">
               <div>
                 <Text size="xs" fw={500} mb={6} c="dimmed">
-                  START OF HOLIDAY YEAR
+                  Business year starts on
                 </Text>
                 <Group gap="sm">
                   <Select
@@ -231,31 +226,6 @@ export default function GeneralSettingsPage() {
                     data={getDayOptions(startMonth)}
                     style={{ flex: 1 }}
                     {...form.getInputProps("startDay")}
-                  />
-                </Group>
-              </div>
-
-              <div>
-                <Text size="xs" fw={500} mb={6} c="dimmed">
-                  END OF HOLIDAY YEAR
-                </Text>
-                <Group gap="sm">
-                  <Select
-                    label="Month"
-                    data={MONTH_OPTIONS}
-                    style={{ flex: 2 }}
-                    {...form.getInputProps("endMonth")}
-                    onChange={(v) => {
-                      form.setFieldValue("endMonth", v ?? "12");
-                      const days = getDayOptions(v ?? "12");
-                      form.setFieldValue("endDay", days[days.length - 1].value);
-                    }}
-                  />
-                  <Select
-                    label="Day"
-                    data={getDayOptions(endMonth)}
-                    style={{ flex: 1 }}
-                    {...form.getInputProps("endDay")}
                   />
                 </Group>
               </div>

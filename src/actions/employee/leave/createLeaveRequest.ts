@@ -1,12 +1,13 @@
 "use server";
 
 import dayjs from "dayjs";
-import mongoose from "mongoose";
 import { revalidatePath } from "next/cache";
 import { getCurrentEmployeeId } from "@/actions/shared/getCurrentEmployeeId";
 import connectDB from "@/db/connection";
 import Employee from "@/db/models/Employee";
 import LeaveRequest from "@/db/models/LeaveRequest";
+import OrganizationSettings from "@/db/models/OrganizationSettings";
+import { getHolidayRemaining, getApprovedOverlap, countRequestWorkingDays } from "@/utils/leaveRules";
 import {
     buildNewLeaveRequestEmail,
     toLeaveRequestEmailData,
@@ -14,9 +15,8 @@ import {
 import { sendEmail } from "@/lib/sendEmail";
 import type { CreateLeaveRequestInput } from "@/types/leaveRequest";
 import { formatDateList } from "@/utils/formatDateList";
+import { getBillingPeriod } from "@/utils/billingPeriod";
 import { getOrganizationId } from "@/utils/getOrganizationId";
-import { getNonWorkingDays } from "@/utils/nonWorkingDays";
-import { countWorkingDays } from "@/utils/workingDays";
 
 export async function createLeaveRequest(data: CreateLeaveRequestInput) {
     await connectDB();
@@ -34,35 +34,46 @@ export async function createLeaveRequest(data: CreateLeaveRequestInput) {
     const startStr = start.format("YYYY-MM-DD");
     const endStr = end.format("YYYY-MM-DD");
 
-    // Twarda blokada: wniosek nie moze obejmowac bank holiday ani company closure.
-    const nonWorkingDays = await getNonWorkingDays(organizationId, startStr, endStr);
+    const orgSettings = await OrganizationSettings.findOne({ organizationId })
+        .select("holidayYearStart")
+        .lean();
+    const holidayYearStart = orgSettings?.holidayYearStart ?? "01-01";
+    const startPeriod = getBillingPeriod(holidayYearStart, start);
+    const endPeriod = getBillingPeriod(holidayYearStart, end);
 
-    if (nonWorkingDays.size > 0) {
+    if (startPeriod.start !== endPeriod.start) {
         return {
-            error: `Selected range includes non-working days (${formatDateList([
-                ...nonWorkingDays,
-            ])}). Please choose a range without bank holidays or company closures.`,
+            error: `Request spans two holiday years (${startPeriod.start} – ${startPeriod.end} and ${endPeriod.start} – ${endPeriod.end}). Please split it into separate requests.`,
         };
     }
 
-    const workingDays = countWorkingDays(startStr, endStr, nonWorkingDays);
+    const { days: workingDays, nonWorkingDays } = await countRequestWorkingDays(organizationId, startStr, endStr);
 
-    if (workingDays === 0) {
+    if (nonWorkingDays.size > 0) {
+        return {
+            error: `Selected range includes non-working days (${formatDateList([...nonWorkingDays])}). Please choose a range without bank holidays or company closures.`,
+        };
+    }
+
+    if (workingDays <= 0) {
         return { error: "Selected range contains no working days" };
     }
 
     const employee = await getCurrentEmployeeId();
 
-    const existingConflict = await LeaveRequest.findOne({
-        employee: new mongoose.Types.ObjectId(employee),
-        status: { $in: ["pending", "approved"] },
-        organizationId,
-        startDate: { $lte: end.format("YYYY-MM-DD") },
-        endDate: { $gte: start.format("YYYY-MM-DD") },
-    });
+    const overlap = await getApprovedOverlap(organizationId, employee, startStr, endStr);
+    if (overlap) {
+        return { error: "Selected dates overlap with an existing approved request" };
+    }
 
-    if (existingConflict) {
-        return { error: "Selected dates overlap with an existing request" };
+    if ((type ?? "holiday") === "holiday") {
+        const { remaining } = await getHolidayRemaining(organizationId, employee, startStr);
+
+        if (workingDays > remaining) {
+            return {
+                error: `Not enough holiday days: requested ${workingDays}, remaining ${remaining} in the current holiday year.`,
+            };
+        }
     }
 
     const employeeDoc = await Employee.findById(employee)
@@ -89,7 +100,7 @@ export async function createLeaveRequest(data: CreateLeaveRequestInput) {
         endDate: end.format("YYYY-MM-DD"),
         startHalfDay: false,
         endHalfDay: false,
-        type: type ?? "annual",
+        type: type ?? "holiday",
         status: "pending",
         createdBy: employee,
         comment: comment || "",

@@ -13,6 +13,7 @@ import {
 } from "@/lib/emails/leaveRequestEmails";
 import { sendEmail } from "@/lib/sendEmail";
 import { getOrganizationId } from "@/utils/getOrganizationId";
+import { getApprovedOverlap, getHolidayRemaining, countRequestWorkingDays } from "@/utils/leaveRules";
 
 async function getCurrentEmployee() {
     const employeeId = await getCurrentEmployeeId();
@@ -46,6 +47,39 @@ export async function approveLeaveRequestAsAdmin(id: string) {
 
         if (request.status === "approved") {
             return { success: false, error: "Leave request is already approved." };
+        }
+
+        const overlappingApproved = await getApprovedOverlap(
+            organizationId,
+            String(request.employee),
+            request.startDate,
+            request.endDate,
+            String(request._id)
+        );
+
+        if (overlappingApproved) {
+            return {
+                success: false,
+                error: `Cannot approve: this request overlaps with an already approved request (${overlappingApproved.startDate} – ${overlappingApproved.endDate}).`,
+            };
+        }
+
+        if (request.type === "holiday") {
+            const { days } = await countRequestWorkingDays(
+                organizationId,
+                request.startDate,
+                request.endDate,
+                request.startHalfDay,
+                request.endHalfDay
+            );
+            const { remaining } = await getHolidayRemaining(organizationId, String(request.employee), request.startDate);
+
+            if (days > remaining) {
+                return {
+                    success: false,
+                    error: `Cannot approve: requested ${days} day(s), remaining holiday balance is ${remaining}.`,
+                };
+            }
         }
 
         request.status = "approved";

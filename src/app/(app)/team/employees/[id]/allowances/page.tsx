@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { getEmployeeById } from "@/actions/manager/employees/getEmployeeById";
-import { getEmployeeLeaveRequests } from "@/actions/manager/leave/getEmployeeLeaveRequests";
+import { getEmployeeAnnualUsedDays } from "@/actions/manager/leave/getEmployeeAnnualUsedDays";
 import { getLeaveAllowances } from "@/actions/admin/leaveAllowances/getLeaveAllowances";
-import { sumAnnualDaysUsed } from "@/utils/leaveBalance";
 import type { LeaveAllowanceType } from "@/db/models/LeaveAllowance";
 import EmployeeAllowancesTable, {
   type AllowanceRow,
@@ -12,7 +11,7 @@ import EmployeeAllowancesTable, {
 // Leave types displayed as rows. Each row has a "Set" button that stores the
 // allowance in the LeaveAllowance collection (one document per employee + type).
 const LEAVE_TYPE_ROWS: { type: LeaveAllowanceType; label: string }[] = [
-  { type: "annual", label: "Annual allowance" },
+  { type: "holiday", label: "Holiday" },
   { type: "unpaid", label: "Unpaid leave" },
   { type: "sick", label: "Sick" },
   { type: "bereavement", label: "Bereavement" },
@@ -30,12 +29,8 @@ export default async function EmployeeAllowancesPage({
     notFound();
   }
 
-  const { success: leavesSuccess, data } = await getEmployeeLeaveRequests(id);
-  const leaveRequests = leavesSuccess ? data : [];
-
-  // Only approved annual leave counts as used allowance; days covered by an
-  // absence (sick etc.) are not deducted.
-  const usedDays = sumAnnualDaysUsed(leaveRequests);
+  const { success: usedSuccess, days } = await getEmployeeAnnualUsedDays(id);
+  const usedDays = usedSuccess ? days : 0;
 
   const { success: allowancesSuccess, data: allowances } =
     await getLeaveAllowances(id);
@@ -48,7 +43,7 @@ export default async function EmployeeAllowancesPage({
     // Annual falls back to the legacy employee.holidayAllowance when unset.
     days:
       allowanceByType.get(row.type) ??
-      (row.type === "annual" ? employee.holidayAllowance : 0),
+      (row.type === "holiday" ? employee.holidayAllowance : 0),
   }));
 
   return (

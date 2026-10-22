@@ -154,7 +154,7 @@ export default function HolidaySchedule({
       <Paper withBorder radius="md" p="sm">
         <Group gap="xs" align="center">
           <span style={dotStyle} />
-          <Text size="sm">Annual leave</Text>
+          <Text size="sm">Holiday</Text>
         </Group>
       </Paper>
 

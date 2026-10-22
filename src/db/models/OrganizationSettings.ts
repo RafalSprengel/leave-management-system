@@ -11,10 +11,8 @@ export interface IOrganizationSettings extends Document {
     address?: string;
     website?: string;
 
-    /** Format: "MM-DD", e.g. "01-01" or "04-01" */
+    /** Format: "MM-DD", e.g. "01-01" or "04-01". Koniec okresu wynika z tej wartosci. */
     holidayYearStart: string;
-    /** Format: "MM-DD", e.g. "12-31" or "03-31" */
-    holidayYearEnd: string;
 
     defaultAnnualLeaveDays: number;
     allowCarryOver: boolean;
@@ -44,11 +42,6 @@ const OrganizationSettingsSchema = new Schema<IOrganizationSettings>(
         holidayYearStart: {
             type: String,
             default: "01-01",
-            match: [/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "Invalid format, expected MM-DD"],
-        },
-        holidayYearEnd: {
-            type: String,
-            default: "12-31",
             match: [/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/, "Invalid format, expected MM-DD"],
         },
 

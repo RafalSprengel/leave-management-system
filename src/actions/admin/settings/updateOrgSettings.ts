@@ -56,7 +56,6 @@ export async function updateOrgSettings(
                 address: doc.address ?? "",
                 website: doc.website ?? "",
                 holidayYearStart: doc.holidayYearStart,
-                holidayYearEnd: doc.holidayYearEnd,
                 defaultAnnualLeaveDays: doc.defaultAnnualLeaveDays,
                 allowCarryOver: doc.allowCarryOver,
                 maxCarryOverDays: doc.maxCarryOverDays,

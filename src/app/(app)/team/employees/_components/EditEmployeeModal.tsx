@@ -231,7 +231,7 @@ export default function EditEmployeeModal({
                     disabled={loading}
                 />
                 <NumberInput
-                    label="Proposed Annual Leave"
+                    label="Proposed Holiday"
                     placeholder="e.g. 20"
                     flex={1}
                     {...form.getInputProps("holidayAllowance")}

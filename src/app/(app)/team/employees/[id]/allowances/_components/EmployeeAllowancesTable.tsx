@@ -96,7 +96,7 @@ export default function EmployeeAllowancesTable({
         });
     };
 
-    const annual = values.find((r) => r.type === "annual");
+    const annual = values.find((r) => r.type === "holiday");
     const annualAllowance = annual?.days ?? 0;
     const annualRemaining = Math.max(annualAllowance - usedDays, 0);
     const progressValue =
@@ -117,7 +117,7 @@ export default function EmployeeAllowancesTable({
                     </Table.Thead>
                     <Table.Tbody>
                         {values.map((row) => {
-                            const isAnnual = row.type === "annual";
+                            const isAnnual = row.type === "holiday";
                             return (
                                 <Table.Tr key={row.type}>
                                     <Table.Td>{row.label}</Table.Td>

@@ -10,13 +10,15 @@ import Employee from "@/db/models/Employee";
 import LeaveAllowance from "@/db/models/LeaveAllowance";
 import LeaveRequest from "@/db/models/LeaveRequest";
 import type {
+  AbsenceBreakdown,
   AnnualLeaveSummary,
   EmployeeLeaveStats,
   SickMonthStat,
   SickWeekdayStat,
 } from "@/types/stats";
 import { getOrganizationId } from "@/utils/getOrganizationId";
-import { sumAnnualDaysUsed } from "@/utils/leaveBalance";
+import { getBillingPeriod } from "@/utils/billingPeriod";
+import { countHolidayUsedInPeriod, countLeaveDaysInPeriod } from "@/utils/leaveBalance";
 import { getNonWorkingDays } from "@/utils/nonWorkingDays";
 import { getWorkingDays } from "@/utils/workingDays";
 
@@ -39,27 +41,14 @@ export async function getEmployeeLeaveStats(
       .subtract(PERIOD_MONTHS - 1, "month")
       .startOf("month");
     const periodStartKey = periodStart.format("YYYY-MM-DD");
-    const periodEndKey = periodEnd.format("YYYY-MM-DD");
 
     const settingsResult = await getOrgSettings();
     const holidayYearStart = settingsResult.success
       ? settingsResult.data.holidayYearStart
       : "01-01";
-    const [holidayStartMonth, holidayStartDay] = holidayYearStart
-      .split("-")
-      .map(Number);
-
-    let billingPeriodStart = dayjs()
-      .year(periodEnd.year())
-      .month(holidayStartMonth - 1)
-      .date(holidayStartDay)
-      .startOf("day");
-
-    if (periodEnd.isBefore(billingPeriodStart)) {
-      billingPeriodStart = billingPeriodStart.subtract(1, "year");
-    }
-
-    const billingPeriodStartKey = billingPeriodStart.format("YYYY-MM-DD");
+    const billingPeriod = getBillingPeriod(holidayYearStart);
+    const billingPeriodStartKey = billingPeriod.start;
+    const periodEndKey = billingPeriod.end;
     const queryStartKey =
       billingPeriodStartKey < periodStartKey
         ? billingPeriodStartKey
@@ -71,6 +60,8 @@ export async function getEmployeeLeaveStats(
       annualAllowance,
       employee,
       employeeRequests,
+      breakdownAbsences,
+      breakdownRequests,
     ] = await Promise.all([
       LeaveRequest.find({
         organizationId,
@@ -90,20 +81,56 @@ export async function getEmployeeLeaveStats(
       LeaveAllowance.findOne({
         organizationId,
         employee: employeeId,
-        type: "annual",
+        type: "holiday",
       }).lean(),
       Employee.findOne({ _id: employeeId, organizationId })
         .select("holidayAllowance")
         .lean(),
       getEmployeeLeaveRequests(employeeId),
+      Absence.find({
+        organizationId,
+        employee: employeeId,
+        type: { $in: ["unauthorised", "other"] },
+        startDate: { $lte: periodEndKey },
+        endDate: { $gte: billingPeriodStartKey },
+      }).lean(),
+      LeaveRequest.find({
+        organizationId,
+        employee: employeeId,
+        status: "approved",
+        type: { $in: ["unpaid", "bereavement"] },
+        startDate: { $lte: periodEndKey },
+        endDate: { $gte: billingPeriodStartKey },
+      }).lean(),
     ]);
 
     const items = [...leaveRequests, ...absences];
+    const breakdownItems = [...breakdownAbsences, ...breakdownRequests];
 
     const annualAllowanceDays =
       annualAllowance?.days ?? employee?.holidayAllowance ?? 0;
-    const annualUsed = sumAnnualDaysUsed(
-      employeeRequests.success ? employeeRequests.data : [],
+    const holidayPeriod = { startDate: billingPeriodStartKey, endDate: periodEndKey };
+    const holidayRequests = (employeeRequests.success ? employeeRequests.data : []).filter(
+      (req) => req.status === "approved" && req.type === "holiday",
+    );
+    const holidayAbsences = await Absence.find({
+      organizationId,
+      employee: employeeId,
+      startDate: { $lte: periodEndKey },
+      endDate: { $gte: billingPeriodStartKey },
+    })
+      .select("startDate endDate")
+      .lean();
+    const holidayNonWorkingDates = await getNonWorkingDays(
+      organizationId,
+      billingPeriodStartKey,
+      periodEndKey,
+    );
+    const annualUsed = countHolidayUsedInPeriod(
+      holidayRequests,
+      holidayAbsences,
+      holidayPeriod,
+      holidayNonWorkingDates,
     );
     const annual: AnnualLeaveSummary = {
       allowance: annualAllowanceDays,
@@ -111,15 +138,16 @@ export async function getEmployeeLeaveStats(
       remaining: Math.max(annualAllowanceDays - annualUsed, 0),
     };
 
+    const allItems = [...items, ...breakdownItems];
     let nonWorkingDates: Set<string> = new Set();
-    if (items.length > 0) {
-      const minStart = items.reduce(
+    if (allItems.length > 0) {
+      const minStart = allItems.reduce(
         (min, item) => (item.startDate < min ? item.startDate : min),
-        items[0].startDate,
+        allItems[0].startDate,
       );
-      const maxEnd = items.reduce(
+      const maxEnd = allItems.reduce(
         (max, item) => (item.endDate > max ? item.endDate : max),
-        items[0].endDate,
+        allItems[0].endDate,
       );
       nonWorkingDates = await getNonWorkingDays(
         organizationId,
@@ -128,17 +156,40 @@ export async function getEmployeeLeaveStats(
       );
     }
 
+    const sickPeriod = { startDate: billingPeriodStartKey, endDate: periodEndKey };
+    const sickAbsences = absences.map((a) => ({ startDate: a.startDate, endDate: a.endDate }));
     let sickThisPeriod = 0;
-    for (const item of items) {
-      const from =
-        item.startDate > billingPeriodStartKey
-          ? item.startDate
-          : billingPeriodStartKey;
-      const to = item.endDate < periodEndKey ? item.endDate : periodEndKey;
-      if (from > to) continue;
-
-      sickThisPeriod += getWorkingDays(from, to, nonWorkingDates).length;
+    for (const item of leaveRequests) {
+      sickThisPeriod += countLeaveDaysInPeriod(item, sickPeriod, [], nonWorkingDates);
     }
+    for (const item of sickAbsences) {
+      sickThisPeriod += countLeaveDaysInPeriod(item, sickPeriod, [], nonWorkingDates);
+    }
+
+    const countBreakdown = (list: { startDate: string; endDate: string }[]) =>
+      list.reduce((sum, item) => {
+        const from =
+          item.startDate > billingPeriodStartKey
+            ? item.startDate
+            : billingPeriodStartKey;
+        const to = item.endDate < periodEndKey ? item.endDate : periodEndKey;
+        return from > to
+          ? sum
+          : sum + getWorkingDays(from, to, nonWorkingDates).length;
+      }, 0);
+
+    const absenceBreakdown: AbsenceBreakdown = {
+      unauthorised: countBreakdown(
+        breakdownAbsences.filter((a) => a.type === "unauthorised"),
+      ),
+      other: countBreakdown(breakdownAbsences.filter((a) => a.type === "other")),
+      unpaid: countBreakdown(
+        breakdownRequests.filter((r) => r.type === "unpaid"),
+      ),
+      bereavement: countBreakdown(
+        breakdownRequests.filter((r) => r.type === "bereavement"),
+      ),
+    };
 
     const daysByWeekday = new Map<number, number>();
     const daysByMonth = new Map<string, number>();
@@ -200,7 +251,13 @@ export async function getEmployeeLeaveStats(
 
     return {
       success: true,
-      data: { sickByWeekday, sickByMonth, annual, sickThisPeriod },
+      data: {
+        sickByWeekday,
+        sickByMonth,
+        annual,
+        sickThisPeriod,
+        absenceBreakdown,
+      },
     };
   } catch (error: unknown) {
     console.error("Error fetching employee leave stats:", error);

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Anchor,
   Badge,
   Box,
   Button,
@@ -10,6 +11,7 @@ import {
   Group,
   Loader,
   Paper,
+  Popover,
   Progress,
   SimpleGrid,
   Stack,
@@ -34,6 +36,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { getAbsences } from "@/actions/admin/absences/getAbsences";
+import { getMyAbsenceBreakdownThisYear } from "@/actions/employee/absences/getMyAbsenceBreakdownThisYear";
+import { getMyLeaveBalance } from "@/actions/employee/leave/getMyLeaveBalance";
 import { getMySickDaysThisYear } from "@/actions/employee/absences/getMySickDaysThisYear";
 import SortableHeader from "@/app/(app)/components/SortableHeader/SortableHeader";
 import { getLeaveTypeLabel, LEAVE_REQUEST_TYPES } from "@/constants/leaveTypes";
@@ -42,12 +46,13 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useMyLeaveRequests } from "@/hooks/useMyLeaveRequests";
 import { useColleagueLeaveRequests } from "@/hooks/useColleagueLeaveRequests";
 import type { IAbsenceItem } from "@/types/absence";
-import { sumAnnualDaysUsed } from "@/utils/leaveBalance";
 import { type SortDirection, sortItems } from "@/utils/sort";
 
 dayjs.extend(relativeTime);
 
 type SortColumn = "type" | "dates" | "days" | "status" | "submitted";
+
+const formatDays = (count: number) => `${count} ${count === 1 ? "day" : "days"}`;
 
 // Labels for recorded absence types (see Absence model). Reuses the wording
 // from the /team/absences page so the two views stay consistent.
@@ -66,6 +71,48 @@ export default function EmployeeDashboard() {
     useColleagueLeaveRequests();
 
   const [sickDaysThisYear, setSickDaysThisYear] = useState(0);
+  const [absenceBreakdown, setAbsenceBreakdown] = useState({
+    unauthorised: 0,
+    other: 0,
+    unpaid: 0,
+    bereavement: 0,
+  });
+
+  useEffect(() => {
+    (async () => {
+      const res = await getMyAbsenceBreakdownThisYear();
+      if (res.success) {
+        setAbsenceBreakdown({
+          unauthorised: res.unauthorised,
+          other: res.other,
+          unpaid: res.unpaid,
+          bereavement: res.bereavement,
+        });
+      }
+    })();
+  }, []);
+  const [holidayBalance, setHolidayBalance] = useState<{
+    allowance: number;
+    used: number;
+    remaining: number;
+  }>({ allowance: 0, used: 0, remaining: 0 });
+
+  useEffect(() => {
+    (async () => {
+      const res = await getMyLeaveBalance();
+      if (res.success) {
+        const holiday = res.data.find((item) => item.type === "holiday");
+        if (holiday) {
+          setHolidayBalance({
+            allowance: holiday.allowance,
+            used: holiday.used,
+            remaining: holiday.remaining,
+          });
+        }
+      }
+    })();
+  }, []);
+
   const [absences, setAbsences] = useState<IAbsenceItem[]>([]);
   const [absencesLoading, setAbsencesLoading] = useState(true);
 
@@ -221,12 +268,9 @@ export default function EmployeeDashboard() {
     );
   }
 
-  const holidayAllowance = employee?.holidayAllowance ?? 0;
-
-  // Only approved annual leave counts as used allowance; days covered by an
-  // absence (sick etc.) are not deducted.
-  const annualDaysUsed = sumAnnualDaysUsed(requests);
-  const daysLeft = holidayAllowance - annualDaysUsed;
+  const holidayAllowance = holidayBalance.allowance;
+  const annualDaysUsed = holidayBalance.used;
+  const daysLeft = holidayBalance.remaining;
   const usagePercent =
     holidayAllowance > 0
       ? Math.min((annualDaysUsed / holidayAllowance) * 100, 100)
@@ -288,7 +332,7 @@ export default function EmployeeDashboard() {
                 tt="uppercase"
                 style={{ letterSpacing: "0.05em", minWidth: 0 }}
               >
-                Annual Leave
+                Holiday
               </Text>
               <ThemeIcon
                 variant="light"
@@ -373,7 +417,7 @@ export default function EmployeeDashboard() {
                 tt="uppercase"
                 style={{ letterSpacing: "0.05em", minWidth: 0 }}
               >
-                Sick Leave Used
+                Absences
               </Text>
               <ThemeIcon
                 variant="light"
@@ -386,28 +430,75 @@ export default function EmployeeDashboard() {
                 <IconAlertCircle size={20} />
               </ThemeIcon>
             </Group>
-            <Stack gap={0}>
-              <Text fw={700} fz={{ base: 18, sm: 28 }} lh={1.15}>
-                {sickDaysThisYear}
-              </Text>
-              <Group gap={4} mt="sm" wrap="wrap">
-                <Badge
-                  variant="light"
-                  color="red"
-                  size="sm"
-                  styles={{
-                    root: { height: "auto", paddingBlock: 2 },
-                    label: {
-                      whiteSpace: "normal",
-                      textAlign: "center",
-                      fontSize: "clamp(9px, 2.5vw, 12px)",
-                      lineHeight: 1.2,
-                    },
+            <Stack gap={4} h="100%" justify="space-between">
+              <Stack gap={4}>
+                <Text fz={{ base: 10, sm: 12 }} c="dimmed" fw={500}>
+                  Sick
+                </Text>
+                <Text fw={700} fz={{ base: 18, sm: 28 }} lh={1.15}>
+                  {sickDaysThisYear} {sickDaysThisYear === 1 ? "day" : "days"}
+                </Text>
+              </Stack>
+              <Popover position="bottom-start" withArrow shadow="md" radius="md" width={230} withinPortal>
+                <Popover.Target>
+                  <Anchor
+                    component="button"
+                    type="button"
+                    size="xs"
+                    underline="always"
+                    ta="left"
+                    style={{ alignSelf: "flex-start" }}
+                  >
+                    more...
+                  </Anchor>
+                </Popover.Target>
+                <Popover.Dropdown
+                  p="xs"
+                  style={{
+                    borderRadius: 12,
+                    boxShadow: "0 16px 40px rgba(0, 0, 0, 0.18)",
+                    border: "1px solid #e5e7eb",
                   }}
                 >
-                  days this year
-                </Badge>
-              </Group>
+                  <Text size="xs" fw={700} c="dimmed" tt="uppercase" mb={6}>
+                    Additional Absences
+                  </Text>
+                  <Stack gap={4}>
+                    <Group justify="space-between" wrap="nowrap">
+                      <Text size="sm" c="dimmed" fw={400}>
+                        Unauthorized
+                      </Text>
+                      <Badge color="gray" variant="light" size="sm">
+                        {formatDays(absenceBreakdown.unauthorised)}
+                      </Badge>
+                    </Group>
+                    <Group justify="space-between" wrap="nowrap">
+                      <Text size="sm" c="dimmed" fw={400}>
+                        Unpaid Leave
+                      </Text>
+                      <Badge color="gray" variant="light" size="sm">
+                        {formatDays(absenceBreakdown.unpaid)}
+                      </Badge>
+                    </Group>
+                    <Group justify="space-between" wrap="nowrap">
+                      <Text size="sm" c="dimmed" fw={400}>
+                        Bereavement
+                      </Text>
+                      <Badge color="gray" variant="light" size="sm">
+                        {formatDays(absenceBreakdown.bereavement)}
+                      </Badge>
+                    </Group>
+                    <Group justify="space-between" wrap="nowrap">
+                      <Text size="sm" c="dimmed" fw={400}>
+                        Other
+                      </Text>
+                      <Badge color="gray" variant="light" size="sm">
+                        {formatDays(absenceBreakdown.other)}
+                      </Badge>
+                    </Group>
+                  </Stack>
+                </Popover.Dropdown>
+              </Popover>
             </Stack>
           </Flex>
         </Card>

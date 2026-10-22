@@ -4,7 +4,9 @@ import dbConnect from "@/db/connection";
 import Absence from "@/db/models/Absence";
 import Employee from "@/db/models/Employee";
 import { getOrganizationId } from "@/utils/getOrganizationId";
-import { countWorkingDaysForOrg } from "@/utils/nonWorkingDays";
+import { getNonWorkingDays } from "@/utils/nonWorkingDays";
+import { countWorkingDays } from "@/utils/workingDays";
+import { formatDateList } from "@/utils/formatDateList";
 import { getCachedSession } from "@/lib/session";
 import { revalidatePath } from "next/cache";
 import type { ICreateAbsenceInput, IAbsenceItem, CreateAbsenceResult } from "@/types/absence";
@@ -34,20 +36,26 @@ export async function createAbsence(data: ICreateAbsenceInput): Promise<CreateAb
 
         const dept = targetEmployee.department as { name?: string } | null;
 
-        // Absencje wystawiamy tylko na dni pracujace - odrzucamy weekendy i dni nierobocze.
-        // daysCount liczymy po stronie serwera, zeby nie ufac wartosci z klienta.
-        const daysCount = await countWorkingDaysForOrg(
-            organizationId,
-            data.startDate,
-            data.endDate
-        );
+        const nonWorkingDays = await getNonWorkingDays(organizationId, data.startDate, data.endDate);
+
+        if (nonWorkingDays.size > 0) {
+            return {
+                success: false,
+                data: null,
+                error: `Selected range includes non-working days (${formatDateList([
+                    ...nonWorkingDays,
+                ])}). Please choose a range without bank holidays or company closures.`,
+            };
+        }
+
+        const daysCount = countWorkingDays(data.startDate, data.endDate, nonWorkingDays);
 
         if (daysCount <= 0) {
             return {
                 success: false,
                 data: null,
                 error:
-                    "Selected range contains no working days. Weekends and non-working days cannot be recorded as absence.",
+                    "Selected range contains no working days. Weekends cannot be recorded as absence.",
             };
         }
 

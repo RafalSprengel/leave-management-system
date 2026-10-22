@@ -7,8 +7,6 @@ export interface IOrgSettings {
 
     /** Format: "MM-DD" */
     holidayYearStart: string;
-    /** Format: "MM-DD" */
-    holidayYearEnd: string;
 
     defaultAnnualLeaveDays: number;
     allowCarryOver: boolean;

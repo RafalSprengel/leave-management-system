@@ -13,6 +13,8 @@ import LeaveAllowance from "@/db/models/LeaveAllowance";
 import LeaveRequest from "@/db/models/LeaveRequest";
 import type { SickWeekdayStat } from "@/types/stats";
 import { getOrganizationId } from "@/utils/getOrganizationId";
+import OrganizationSettings from "@/db/models/OrganizationSettings";
+import { getBillingPeriod } from "@/utils/billingPeriod";
 import { countAbsenceOverlapDays, type DateRange } from "@/utils/leaveBalance";
 import { getNonWorkingDays } from "@/utils/nonWorkingDays";
 import { computeLeaveDaysRequested, getWorkingDays } from "@/utils/workingDays";
@@ -24,6 +26,7 @@ export interface ReportDataItem {
     endDate: string;
     daysRequested: number;
     chargedDays: number;
+    inBillingPeriod: boolean;
     status: "pending" | "approved" | "rejected" | "cancelled";
     type: LeaveRequestType;
     employeeName?: string;
@@ -104,7 +107,7 @@ export async function getReportData(): Promise<{
 
         const annualAllowances = await LeaveAllowance.find({
             organizationId: orgId,
-            type: "annual",
+            type: "holiday",
         }).lean();
 
         const annualAllowanceByEmployee = new Map(
@@ -195,6 +198,12 @@ export async function getReportData(): Promise<{
             absencesByEmployee.set(key, list);
         }
 
+        const holidayYearStart = await OrganizationSettings.findOne({ organizationId: orgId })
+            .select("holidayYearStart")
+            .lean()
+            .then((doc) => doc?.holidayYearStart ?? "01-01");
+        const billingPeriod = getBillingPeriod(holidayYearStart);
+
         const mappedRequests: ReportDataItem[] = activeLeaveRequests.map((lr) => {
             const daysRequested = computeLeaveDaysRequested(
                 lr.startDate,
@@ -218,6 +227,8 @@ export async function getReportData(): Promise<{
                 endDate: lr.endDate,
                 daysRequested,
                 chargedDays: Math.max(daysRequested - absenceDays, 0),
+                inBillingPeriod:
+                    lr.startDate >= billingPeriod.start && lr.startDate <= billingPeriod.end,
                 status: lr.status,
                 type: lr.type,
                 employeeName: getEmployeeName(lr.employee, lr.employeeName),

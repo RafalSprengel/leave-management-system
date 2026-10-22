@@ -1,18 +1,19 @@
 "use server";
 
-import dayjs from "dayjs";
 import mongoose from "mongoose";
 
 import dbConnect from "@/db/connection";
 import Absence from "@/db/models/Absence";
 import LeaveRequest from "@/db/models/LeaveRequest";
+import OrganizationSettings from "@/db/models/OrganizationSettings";
 import { getCurrentEmployeeId } from "@/actions/shared/getCurrentEmployeeId";
+import { getBillingPeriod } from "@/utils/billingPeriod";
 import { getOrganizationId } from "@/utils/getOrganizationId";
 import { getNonWorkingDays } from "@/utils/nonWorkingDays";
-import { countWorkingDays } from "@/utils/workingDays";
+import { countLeaveDaysInPeriod } from "@/utils/leaveBalance";
 
 /**
- * Liczba dni chorobowych pracownika w biezacym roku kalendarzowym.
+ * Liczba dni chorobowych pracownika w biezacym okresie rozliczeniowym.
  * Sumuje nieobecnosci (Absence) typu "sick" oraz zatwierdzone wnioski (LeaveRequest)
  * typu "sick", liczone w dniach roboczych.
  */
@@ -26,9 +27,10 @@ export async function getMySickDaysThisYear(): Promise<{
         const employeeId = await getCurrentEmployeeId();
         const organizationId = await getOrganizationId();
 
-        const year = dayjs().year();
-        const start = `${year}-01-01`;
-        const end = `${year}-12-31`;
+        const orgSettings = await OrganizationSettings.findOne({ organizationId })
+            .select("holidayYearStart")
+            .lean();
+        const { start, end } = getBillingPeriod(orgSettings?.holidayYearStart ?? "01-01");
         const employeeObjectId = new mongoose.Types.ObjectId(employeeId);
 
         const [absences, requests, nonWorkingDates] = await Promise.all([
@@ -49,24 +51,15 @@ export async function getMySickDaysThisYear(): Promise<{
                 startDate: { $lte: end },
                 endDate: { $gte: start },
             })
-                .select("startDate endDate")
+                .select("startDate endDate startHalfDay endHalfDay")
                 .lean(),
             getNonWorkingDays(organizationId, start, end),
         ]);
 
-        const clampStart = (date: string) => (date < start ? start : date);
-        const clampEnd = (date: string) => (date > end ? end : date);
-
-        const days = [...absences, ...requests].reduce(
-            (sum, item) =>
-                sum +
-                countWorkingDays(
-                    clampStart(item.startDate),
-                    clampEnd(item.endDate),
-                    nonWorkingDates
-                ),
-            0
-        );
+        const period = { startDate: start, endDate: end };
+        const days =
+            absences.reduce((sum, item) => sum + countLeaveDaysInPeriod(item, period, [], nonWorkingDates), 0) +
+            requests.reduce((sum, item) => sum + countLeaveDaysInPeriod(item, period, [], nonWorkingDates), 0);
 
         return { success: true, days };
     } catch (error) {

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
     ActionIcon,
+    Alert,
     Avatar,
     Badge,
     Button,
@@ -26,6 +27,7 @@ import { useForm } from "@mantine/form";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import {
+    IconAlertTriangle,
     IconCalendarOff,
     IconPlus,
     IconSearch,
@@ -37,10 +39,14 @@ import dayjs from "dayjs";
 import { getAbsences } from "@/actions/admin/absences/getAbsences";
 import { createAbsence } from "@/actions/admin/absences/createAbsence";
 import { deleteAbsence } from "@/actions/admin/absences/deleteAbsence";
+import { getEmployeeLeaveRequests } from "@/actions/manager/leave/getEmployeeLeaveRequests";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useNonWorkingDays } from "@/hooks/useNonWorkingDays";
 import { countWorkingDays, isWeekend } from "@/utils/workingDays";
+import { formatDateList } from "@/utils/formatDateList";
+import { findNonWorkingInRange } from "@/utils/dateRangeRules";
 import type { IAbsenceItem } from "@/types/absence";
+import type { TeamLeaveRequestItem } from "@/types/leaveRequest";
 import type { AbsenceType } from "@/db/models/Absence";
 
 const TYPE_LABELS: Record<AbsenceType, string> = {
@@ -75,6 +81,7 @@ export default function AbsencesPage() {
 
     const { employees, loading: employeesLoading } = useEmployees();
     const { bankHolidaysMap, closuresMap } = useNonWorkingDays();
+    const [employeeApprovedLeave, setEmployeeApprovedLeave] = useState<TeamLeaveRequestItem[]>([]);
 
     const nonWorkingDates = useMemo(() => {
         const set = new Set<string>();
@@ -116,6 +123,50 @@ export default function AbsencesPage() {
             },
         },
     });
+
+    const selectedEmployee = form.values.employee;
+
+    useEffect(() => {
+        if (!selectedEmployee) {
+            setEmployeeApprovedLeave([]);
+            return;
+        }
+        (async () => {
+            const res = await getEmployeeLeaveRequests(selectedEmployee);
+            setEmployeeApprovedLeave(
+                res.success ? res.data.filter((r) => r.status === "approved") : []
+            );
+        })();
+    }, [selectedEmployee]);
+
+    const leaveOverlapDates = useMemo(() => {
+        const dates = new Set<string>();
+        employeeApprovedLeave.forEach((req) => {
+            let cur = dayjs(req.startDate);
+            const last = dayjs(req.endDate);
+            while (!cur.isAfter(last, "day")) {
+                dates.add(cur.format("YYYY-MM-DD"));
+                cur = cur.add(1, "day");
+            }
+        });
+        return dates;
+    }, [employeeApprovedLeave]);
+
+    const overlappingLeaveDays = useMemo(() => {
+        const [from, to] = form.values.dateRange;
+        if (!from || !to) return [] as string[];
+        const found: string[] = [];
+        let cur = dayjs(from);
+        const last = dayjs(to);
+        while (!cur.isAfter(last, "day")) {
+            const key = cur.format("YYYY-MM-DD");
+            if (leaveOverlapDates.has(key) && !nonWorkingDates.has(key) && !isWeekend(key)) {
+                found.push(key);
+            }
+            cur = cur.add(1, "day");
+        }
+        return found;
+    }, [form.values.dateRange, leaveOverlapDates, nonWorkingDates]);
 
     const loadAbsences = async () => {
         setLoading(true);
@@ -408,9 +459,29 @@ export default function AbsencesPage() {
                             allowSingleDateInRange
                             label="Absence period"
                             placeholder="Pick date range"
-                            description="Weekends cannot be selected — only working days are counted."
+                            description="Weekends are skipped in the count — only working days are recorded."
                             firstDayOfWeek={1}
-                            excludeDate={(date) => isWeekend(date)}
+                            excludeDate={(date) => nonWorkingDates.has(dayjs(date).format("YYYY-MM-DD"))}
+                            onChange={(val) => {
+                                form.clearFieldError("dateRange");
+                                const [from, to] = val;
+                                if (from && to) {
+                                    const blocked = findNonWorkingInRange(
+                                        dayjs(from).format("YYYY-MM-DD"),
+                                        dayjs(to).format("YYYY-MM-DD"),
+                                        nonWorkingDates
+                                    );
+                                    if (blocked.length > 0) {
+                                        form.setFieldValue("dateRange", [null, null]);
+                                        form.setFieldError(
+                                            "dateRange",
+                                            `Range includes non-working days (${formatDateList(blocked)}). Choose a range without bank holidays or company closures.`
+                                        );
+                                        return;
+                                    }
+                                }
+                                form.setFieldValue("dateRange", val as [Date | null, Date | null]);
+                            }}
                             getDayProps={(date) => {
                                 const key = dayjs(date).format("YYYY-MM-DD");
                                 const weekend = isWeekend(date);
@@ -436,8 +507,20 @@ export default function AbsencesPage() {
                                 }
                                 return {};
                             }}
-                            {...form.getInputProps("dateRange")}
+                            value={form.values.dateRange}
+                            error={form.errors.dateRange}
                         />
+
+                        {overlappingLeaveDays.length > 0 && (
+                            <Alert
+                                icon={<IconAlertTriangle size={16} />}
+                                color="yellow"
+                                title="Overlaps with approved holiday"
+                                variant="light"
+                            >
+                                This employee has approved leave on {formatDateList(overlappingLeaveDays)}. The absence will be recorded anyway, and the overlapping days will not be deducted from holiday balance.
+                            </Alert>
+                        )}
 
                         <Select
                             label="Type"

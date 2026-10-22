@@ -58,7 +58,7 @@ export async function setLeaveAllowance(
         }
 
         // Keep the legacy annual allowance field in sync so existing views keep working.
-        if (type === "annual") {
+        if (type === "holiday") {
             await Employee.updateOne(
                 { _id: employeeId, organizationId },
                 { $set: { holidayAllowance: days } }

@@ -24,7 +24,7 @@ export default async function EmployeeCalendarPage({
 
   // Zatwierdzony urlop wypoczynkowy (annual leave) pracownika
   const approvedLeaves = leavesSuccess
-    ? data.filter((req) => req.status === "approved" && req.type === "annual")
+    ? data.filter((req) => req.status === "approved" && req.type === "holiday")
     : [];
 
   // Dni nierobocze dla zakresu wszystkich urlopow -> jeden Set dla helpera dni pracujacych
@@ -43,7 +43,7 @@ export default async function EmployeeCalendarPage({
     getWorkingDaySegments(req.startDate, req.endDate, nonWorkingDates).map(
       (segment, index) => ({
         id: `${req._id}#${index}`,
-        title: "Annual Leave",
+        title: "Holiday",
         start: `${segment.start} 00:00:00`,
         end: `${segment.end} 23:59:59`,
       }),
