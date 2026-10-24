@@ -16,6 +16,7 @@ Persistent project memory lives in `memory/`. Each kind of information has one p
 5. If `progress.md` lists unfinished work, check its current state in the code before continuing. Do not assume it is still accurate.
 6. If the new task does not continue the previous one, do not treat the previous `Current focus` as its goal.
 7. If a fact is outdated, correct it in the relevant topic file (`## Key Facts` or `## Constraints`). Add a `## Decisions & Log` entry only when the correction is technically significant or affects future work.
+8. Check whether the user's latest instructions supersede any requirement, decision or open task recorded in memory. The latest explicit user decision takes precedence over earlier memory and over the current code. Do not treat an old requirement as active only because it is recorded in memory or reflected in the code.
 
 ## Code analysis
 - Start from the paths in `memory/project-map.md` and from the files and dependencies named in the relevant topic.
@@ -28,6 +29,9 @@ Persistent project memory lives in `memory/`. Each kind of information has one p
 ## Recording information
 - Durable architecture and implementation facts, and significant issues: the matching `TOPIC-*.md`.
 - Important decisions, constraints and corrections: `## Decisions & Log` of the affected topic. Entry format: `- YYYY-MM-DD — <what changed>. Reason: <why>. Files: <key paths>.` If several topics are affected, add one entry to each. Log meaningful decisions and important technical findings, not routine observations or debugging steps.
+- Changed or reversed requirements: the newer explicit user decision supersedes the older one. Find all references to the old requirement in `memory/` (topics, `progress.md`, `project-map.md`, `mainContext.md`) and update or remove outdated active statements, so the current requirement is unambiguous. Keep historical context only when useful, marked `Superseded` with its date and the replacing decision. Add one dated `Decisions & Log` entry to each affected topic stating what changed and the current decision. Do not duplicate an existing entry.
+- Requirement vs implementation: state separately the current intended behaviour, what the code currently implements, any gap between them, and what still needs verification. Updating memory does not mean the application code has been updated.
+- Scope of changes: if the user asks only to record or document a decision, change memory only and do not modify application code. If the user also asks for implementation, update the code and verify it against the new requirement. If it is unclear whether code should change, ask before changing it.
 - Unresolved problems: `## Known Issues & Follow-up` in the affected topic, with the affected file or area, the evidence, the potential impact and a status. Record potential security or correctness issues even if unresolved, and label them `Needs verification` until confirmed. Never present an untested hypothesis as a confirmed bug. Keep an issue until it is verified as resolved or no longer relevant, and update its status when new evidence appears.
 - Current state of work: `memory/progress.md`. Update it when the important state of the project changed. Do not mark anything completed unless it has been verified. Separate verified facts from decisions, hypotheses and open questions.
 - Versions and terminal facts: `memory/environment.md`.
@@ -41,7 +45,7 @@ Rules for all entries:
 - Do not remove unfinished work or open issues without checking their current state.
 
 ## End of a task
-1. If the task changed code, add the `## Decisions & Log` entry to each affected topic.
+1. If the task changed code or a requirement, add the `## Decisions & Log` entry to each affected topic.
 2. If the important state of the project changed, update `memory/progress.md`: completed steps, remaining work, decisions, issues needing verification.
 3. Update `memory/project-map.md` only if the structure or the mapping of important files changed.
 4. Update `memory/environment.md` only after a change to dependencies, configuration or environment, with verified data and the date.
