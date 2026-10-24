@@ -273,17 +273,15 @@ export default function NewEmployeeLeaveRequestPage() {
     const startsInCurrentPeriod =
       !!startDateStr && !!balancePeriod && startDateStr >= balancePeriod.start && startDateStr <= balancePeriod.end;
 
-    if (
-      startsInCurrentPeriod &&
-      selectedTypeBalance &&
-      form.values.type === "holiday" &&
-      daysRequested > selectedTypeBalance.remaining
-    ) {
+    const availableDays = selectedTypeBalance
+      ? Math.max(0, selectedTypeBalance.remaining - selectedTypeBalance.pending)
+      : 0;
+
+    if (startsInCurrentPeriod && selectedTypeBalance && daysRequested > availableDays) {
       setBalanceError(
         `You don't have enough ${LEAVE_TYPE_META[form.values.type].label} days to submit this request. ` +
         `Requested: ${daysRequested} day${daysRequested !== 1 ? "s" : ""}, ` +
-        `remaining: ${selectedTypeBalance.remaining} day${selectedTypeBalance.remaining !== 1 ? "s" : ""}. ` +
-        `Pending requests do not reduce your balance until approved, so the approver may still reject this request if the balance runs out.`
+        `available: ${availableDays} day${availableDays !== 1 ? "s" : ""} (remaining balance minus pending requests).`
       );
       return;
     }
@@ -483,6 +481,9 @@ export default function NewEmployeeLeaveRequestPage() {
                       >
                         Remaining: {selectedTypeBalance.remaining}d
                       </Badge>
+                      <Badge color="yellow" variant="light">
+                        Pending: {selectedTypeBalance.pending}d
+                      </Badge>
                     </Group>
                   </Group>
                 </Paper>
@@ -506,17 +507,16 @@ export default function NewEmployeeLeaveRequestPage() {
                 </Paper>
               )}
 
-              {form.values.type === "holiday" &&
-                myRequests.some((req) => req.status === "pending" && req.type === "holiday") && (
-                  <Alert
-                    icon={<IconAlertTriangle size={16} />}
-                    color="yellow"
-                    title="Pending holiday requests"
-                    variant="light"
-                  >
-                    You have pending holiday requests. They do not block the calendar and do not reduce your remaining balance until approved. If they are approved later and exceed your balance, the approval will be rejected.
-                  </Alert>
-                )}
+              {myRequests.some((req) => req.status === "pending" && req.type === form.values.type) && (
+                <Alert
+                  icon={<IconAlertTriangle size={16} />}
+                  color="yellow"
+                  title="Pending requests"
+                  variant="light"
+                >
+                  Your pending requests of this type are counted against your balance. Their days are reserved until they are approved or rejected, so you cannot submit more days than your remaining balance minus pending requests.
+                </Alert>
+              )}
 
               {balanceError && (
                 <Alert

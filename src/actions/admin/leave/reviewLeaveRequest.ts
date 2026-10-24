@@ -13,7 +13,8 @@ import {
 } from "@/lib/emails/leaveRequestEmails";
 import { sendEmail } from "@/lib/sendEmail";
 import { getOrganizationId } from "@/utils/getOrganizationId";
-import { getApprovedOverlap, getHolidayRemaining, countRequestWorkingDays } from "@/utils/leaveRules";
+import { getApprovedOverlap, getLeaveRemaining, countRequestWorkingDays } from "@/utils/leaveRules";
+import { getLeaveTypeLabel } from "@/constants/leaveTypes";
 
 async function getCurrentEmployee() {
     const employeeId = await getCurrentEmployeeId();
@@ -64,22 +65,20 @@ export async function approveLeaveRequestAsAdmin(id: string) {
             };
         }
 
-        if (request.type === "holiday") {
-            const { days } = await countRequestWorkingDays(
-                organizationId,
-                request.startDate,
-                request.endDate,
-                request.startHalfDay,
-                request.endHalfDay
-            );
-            const { remaining } = await getHolidayRemaining(organizationId, String(request.employee), request.startDate);
+        const { days } = await countRequestWorkingDays(
+            organizationId,
+            request.startDate,
+            request.endDate,
+            request.startHalfDay,
+            request.endHalfDay
+        );
+        const { remaining } = await getLeaveRemaining(organizationId, String(request.employee), request.type, request.startDate);
 
-            if (days > remaining) {
-                return {
-                    success: false,
-                    error: `Cannot approve: requested ${days} day(s), remaining holiday balance is ${remaining}.`,
-                };
-            }
+        if (days > remaining) {
+            return {
+                success: false,
+                error: `Cannot approve: requested ${days} day(s), remaining ${getLeaveTypeLabel(request.type)} balance is ${remaining}.`,
+            };
         }
 
         request.status = "approved";

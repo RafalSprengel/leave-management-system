@@ -4,7 +4,8 @@ import connectDB from "@/db/connection";
 import LeaveRequest from "@/db/models/LeaveRequest";
 import dayjs from "dayjs";
 import { getOrganizationId } from "@/utils/getOrganizationId";
-import { getApprovedOverlap, getHolidayRemaining, countRequestWorkingDays } from "@/utils/leaveRules";
+import { getApprovedOverlap, getLeaveRemaining, countRequestWorkingDays } from "@/utils/leaveRules";
+import { getLeaveTypeLabel } from "@/constants/leaveTypes";
 import { formatDateList } from "@/utils/formatDateList";
 import { revalidatePath } from "next/cache";
 import { CreateLeaveRequestParams } from "@/types/leaveRequest";
@@ -84,14 +85,13 @@ export async function createLeaveRequest(data: CreateLeaveRequestParams) {
             };
         }
 
-        if ((data.type ?? "holiday") === "holiday") {
-            const { remaining } = await getHolidayRemaining(orgId, data.userId, startStr);
-            if (daysRequested > remaining) {
-                return {
-                    success: false,
-                    error: `Not enough holiday days: requested ${daysRequested}, remaining ${remaining} in the current holiday year.`,
-                };
-            }
+        const leaveType = data.type ?? "holiday";
+        const { remaining } = await getLeaveRemaining(orgId, data.userId, leaveType, startStr, true);
+        if (daysRequested > remaining) {
+            return {
+                success: false,
+                error: `Not enough ${getLeaveTypeLabel(leaveType)} days: requested ${daysRequested}, available ${remaining} in the current holiday year (including pending requests).`,
+            };
         }
 
         const adminId = await getCurrentEmployeeId();

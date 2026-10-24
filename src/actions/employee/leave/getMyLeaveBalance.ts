@@ -8,7 +8,7 @@ import { getCurrentEmployeeId } from "@/actions/shared/getCurrentEmployeeId";
 import Absence from "@/db/models/Absence";
 import { getOrganizationId } from "@/utils/getOrganizationId";
 import { getNonWorkingDays } from "@/utils/nonWorkingDays";
-import { LEAVE_REQUEST_TYPES, consumesAllowance, type LeaveRequestType } from "@/constants/leaveTypes";
+import { LEAVE_REQUEST_TYPES, type LeaveRequestType } from "@/constants/leaveTypes";
 import { DEFAULT_LEAVE_ALLOWANCE_DAYS } from "@/constants/leaveAllowanceTypes";
 import mongoose from "mongoose";
 import Employee from "@/db/models/Employee";
@@ -92,29 +92,9 @@ export async function getMyLeaveBalance(): Promise<GetMyLeaveBalanceResult> {
         for (const type of LEAVE_REQUEST_TYPES) {
             const ofType = approvedRequests.filter((req) => req.type === type);
             const pendingOfType = pendingRequests.filter((req) => req.type === type);
-            if (consumesAllowance(type) && type === "holiday") {
-                usedByType.set(type, countHolidayUsedInPeriod(ofType, absenceDocs, period, nonWorkingDays));
-                pendingByType.set(type, countHolidayUsedInPeriod(pendingOfType, absenceDocs, period, nonWorkingDays));
-            } else {
-                usedByType.set(
-                    type,
-                    countHolidayUsedInPeriod(
-                        ofType.map((req) => ({ ...req, startHalfDay: false, endHalfDay: false })),
-                        [],
-                        period,
-                        nonWorkingDays
-                    )
-                );
-                pendingByType.set(
-                    type,
-                    countHolidayUsedInPeriod(
-                        pendingOfType.map((req) => ({ ...req, startHalfDay: false, endHalfDay: false })),
-                        [],
-                        period,
-                        nonWorkingDays
-                    )
-                );
-            }
+            const typeAbsences = type === "holiday" ? absenceDocs : [];
+            usedByType.set(type, countHolidayUsedInPeriod(ofType, typeAbsences, period, nonWorkingDays));
+            pendingByType.set(type, countHolidayUsedInPeriod(pendingOfType, typeAbsences, period, nonWorkingDays));
         }
 
         const data: LeaveBalanceItem[] = LEAVE_REQUEST_TYPES.map((type) => {

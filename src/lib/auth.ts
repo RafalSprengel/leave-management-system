@@ -264,6 +264,7 @@ function createAuth(db: Db) {
         trustedOrigins: [process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
             "http://localhost:3001",
             "http://localhost:3002",
+            "http://192.168.*:3000",
             "https://off-work.rafalsprengel.com",
             "off-work-three.vercel.app"
         ]

@@ -7,7 +7,8 @@ import connectDB from "@/db/connection";
 import Employee from "@/db/models/Employee";
 import LeaveRequest from "@/db/models/LeaveRequest";
 import OrganizationSettings from "@/db/models/OrganizationSettings";
-import { getHolidayRemaining, getApprovedOverlap, countRequestWorkingDays } from "@/utils/leaveRules";
+import { getLeaveRemaining, getApprovedOverlap, countRequestWorkingDays } from "@/utils/leaveRules";
+import { getLeaveTypeLabel } from "@/constants/leaveTypes";
 import {
     buildNewLeaveRequestEmail,
     toLeaveRequestEmailData,
@@ -66,14 +67,13 @@ export async function createLeaveRequest(data: CreateLeaveRequestInput) {
         return { error: "Selected dates overlap with an existing approved request" };
     }
 
-    if ((type ?? "holiday") === "holiday") {
-        const { remaining } = await getHolidayRemaining(organizationId, employee, startStr);
+    const leaveType = type ?? "holiday";
+    const { remaining } = await getLeaveRemaining(organizationId, employee, leaveType, startStr, true);
 
-        if (workingDays > remaining) {
-            return {
-                error: `Not enough holiday days: requested ${workingDays}, remaining ${remaining} in the current holiday year.`,
-            };
-        }
+    if (workingDays > remaining) {
+        return {
+            error: `Not enough ${getLeaveTypeLabel(leaveType)} days: requested ${workingDays}, available ${remaining} in the current holiday year (including pending requests).`,
+        };
     }
 
     const employeeDoc = await Employee.findById(employee)

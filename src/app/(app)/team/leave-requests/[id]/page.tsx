@@ -43,6 +43,7 @@ import {
 import { useLeaveRequestDetails } from "@/hooks/useLeaveRequestDetails";
 import { formatRequestDays } from "@/utils/leaveBalance";
 import { LEAVE_REQUEST_TYPES, getLeaveTypeLabel } from "@/constants/leaveTypes";
+import { LeaveResourcesMonthView } from "./_components/LeaveResourcesMonthView";
 
 const typeLabels: Record<string, string> = Object.fromEntries(
   LEAVE_REQUEST_TYPES.map((t) => [t, getLeaveTypeLabel(t)]),
@@ -445,6 +446,8 @@ export default function LeaveRequestDetailsPage() {
             )}
           </Stack>
         </Paper>
+
+        <LeaveResourcesMonthView request={request} />
       </Stack>
     </Container>
   );
